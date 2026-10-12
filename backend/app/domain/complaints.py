@@ -1,7 +1,7 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class ComplaintCategory(StrEnum):
+class ComplaintCategory(str, Enum):
     ROAD_DAMAGE = "ROAD_DAMAGE"
     WASTE = "WASTE"
     WATER_SUPPLY = "WATER_SUPPLY"
@@ -10,7 +10,7 @@ class ComplaintCategory(StrEnum):
     OTHER = "OTHER"
 
 
-class ComplaintStatus(StrEnum):
+class ComplaintStatus(str, Enum):
     OPEN = "OPEN"
     IN_PROGRESS = "IN_PROGRESS"
     RESOLVED = "RESOLVED"

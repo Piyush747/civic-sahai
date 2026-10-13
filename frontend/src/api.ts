@@ -1,5 +1,11 @@
 import axios from 'axios';
-import type { Complaint, ComplaintCreate, ComplaintList } from './types';
+import type {
+  Complaint,
+  ComplaintCreate,
+  ComplaintList,
+  IncidentList,
+  ZoneList,
+} from './types';
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
@@ -17,4 +23,12 @@ export const complaintsApi = {
         headers: { 'X-User-Id': citizenUserId },
       })
     ).data,
+};
+
+export const incidentsApi = {
+  list: async () => (await http.get<IncidentList>('/api/v1/incidents')).data,
+};
+
+export const zonesApi = {
+  list: async () => (await http.get<ZoneList>('/api/v1/zones')).data,
 };

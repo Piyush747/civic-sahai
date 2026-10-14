@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { incidentsApi, zonesApi } from './api';
+import { ADMIN_HOME, citizenPaths, DEFAULT_CITIZEN_USER_ID } from './paths';
 
 const navItems: { to: string; label: string; icon: string; end?: boolean }[] = [
-  { to: '/admin', label: 'Overview', icon: '▦', end: true },
+  { to: ADMIN_HOME, label: 'Overview', icon: '▦', end: true },
   { to: '/admin/incidents', label: 'Incidents', icon: '◉' },
   { to: '/admin/clusters', label: 'Incident clusters', icon: '◎' },
   { to: '/admin/allocation', label: 'Resource allocation', icon: '⇄' },
@@ -84,7 +85,7 @@ export function AdminLayout() {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <Link to="/admin">Civic SahAI</Link>
+          <Link to={ADMIN_HOME}>Civic SahAI</Link>
           <span>City administration</span>
         </div>
         <nav className="admin-nav" aria-label="Administrator">
@@ -106,7 +107,7 @@ export function AdminLayout() {
             <p>Prioritize high-risk open issues and balance workload across zones.</p>
           </div>
           <span className="system-healthy">System healthy</span>
-          <Link className="admin-citizen-link" to="/">
+          <Link className="admin-citizen-link" to={citizenPaths(DEFAULT_CITIZEN_USER_ID).home}>
             ← Citizen portal
           </Link>
         </div>
@@ -338,7 +339,7 @@ export function AdminPlaceholder({ title }: { title: string }) {
         This section is mapped in the City Administration shell. The overview dashboard is ready;
         deeper admin screens can follow the same Figma patterns.
       </p>
-      <Link className="button" to="/admin">
+      <Link className="button" to={ADMIN_HOME}>
         Back to overview
       </Link>
     </section>

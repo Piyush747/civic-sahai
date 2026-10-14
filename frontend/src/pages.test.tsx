@@ -26,6 +26,9 @@ function renderHome() {
 test('home dashboard presents the report action from the Figma design', async () => {
   renderHome();
   expect(screen.getByRole('heading', { name: /good (morning|afternoon|evening), piyush/i })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /report an issue/i })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /report an issue/i })).toHaveAttribute(
+    'href',
+    '/citizen/complaints/new/usr-id=101',
+  );
   expect(await screen.findByText(/your recent complaints/i)).toBeInTheDocument();
 });

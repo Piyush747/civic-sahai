@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCitizenPaths } from './paths';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -150,6 +151,7 @@ function statusCounts(items: Complaint[]) {
 }
 
 export function Home() {
+  const paths = useCitizenPaths();
   const [filter, setFilter] = useState<StatusFilter>('all');
   const query = useQuery({ queryKey: ['complaints'], queryFn: complaintsApi.list });
   const items = query.data?.items ?? [];
@@ -178,7 +180,7 @@ export function Home() {
             Report civic issues in your area and follow their progress.
           </p>
         </div>
-        <Link className="report-cta" to="/complaints/new">
+        <Link className="report-cta" to={paths.newComplaint}>
           <span className="report-cta-plus" aria-hidden>
             +
           </span>
@@ -217,7 +219,7 @@ export function Home() {
           <h2>Your recent complaints</h2>
           <p>Track each report and see what happens next.</p>
         </div>
-        <Link className="text-link" to="/complaints">
+        <Link className="text-link" to={paths.complaints}>
           View all complaints →
         </Link>
       </div>
@@ -262,7 +264,7 @@ export function Home() {
         {visible.map((item) => {
           const status = displayStatus(item.status);
           return (
-            <Link key={item.id} className="table-row" to={`/complaints/${item.id}`}>
+            <Link key={item.id} className="table-row" to={paths.complaint(item.id)}>
               <div className="issue-cell">
                 <span className="issue-tile">{categoryInitials[item.category]}</span>
                 <span>
@@ -295,6 +297,7 @@ export function Home() {
 }
 
 export function ComplaintForm() {
+  const paths = useCitizenPaths();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [photoNames, setPhotoNames] = useState<string[]>([]);
@@ -323,7 +326,7 @@ export function ComplaintForm() {
     },
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['complaints'] });
-      navigate(`/complaints/${data.id}`);
+      navigate(paths.complaint(data.id));
     },
   });
 
@@ -333,7 +336,7 @@ export function ComplaintForm() {
         Tell us what is happening. Your report helps the local team understand what needs attention.
       </p>
       <p className="breadcrumb">
-        <Link to="/complaints">My complaints</Link>
+        <Link to={paths.complaints}>My complaints</Link>
         <span> / </span>
         <span>Register a complaint</span>
       </p>
@@ -423,7 +426,7 @@ export function ComplaintForm() {
             <button className="button submit-complaint" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Submitting…' : 'Submit complaint'}
             </button>
-            <Link className="button-secondary" to="/complaints">
+            <Link className="button-secondary" to={paths.complaints}>
               Cancel
             </Link>
           </div>
@@ -452,6 +455,7 @@ export function ComplaintForm() {
 }
 
 export function ComplaintListPage() {
+  const paths = useCitizenPaths();
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -489,7 +493,7 @@ export function ComplaintListPage() {
         Review every report you have submitted and check its latest status.
       </p>
       <p className="breadcrumb">
-        <Link to="/">My complaints</Link>
+        <Link to={paths.home}>My complaints</Link>
         <span> / </span>
         <span>All complaints</span>
       </p>
@@ -501,7 +505,7 @@ export function ComplaintListPage() {
             {query.isLoading ? '…' : `${filtered.length} complaint${filtered.length === 1 ? '' : 's'}`}
           </p>
         </div>
-        <Link className="button register-cta" to="/complaints/new">
+        <Link className="button register-cta" to={paths.newComplaint}>
           + Register a complaint
         </Link>
       </div>
@@ -557,7 +561,7 @@ export function ComplaintListPage() {
         {pageItems.map((item) => {
           const status = displayStatus(item.status);
           return (
-            <Link key={item.id} className="all-complaint-row" to={`/complaints/${item.id}`}>
+            <Link key={item.id} className="all-complaint-row" to={paths.complaint(item.id)}>
               <div className="all-complaint-main">
                 <strong>{item.title}</strong>
                 <small>
@@ -613,6 +617,7 @@ export function ComplaintListPage() {
 }
 
 export function ComplaintDetail() {
+  const paths = useCitizenPaths();
   const { id = '' } = useParams();
   const query = useQuery({
     queryKey: ['complaint', id],
@@ -626,7 +631,7 @@ export function ComplaintDetail() {
     return (
       <section className="state">
         <h1>Report not found</h1>
-        <Link to="/complaints">Return to reports</Link>
+        <Link to={paths.complaints}>Return to reports</Link>
       </section>
     );
 
@@ -642,7 +647,7 @@ export function ComplaintDetail() {
     <section className="detail-page">
       <p className="register-lede">Track the status and updates for your submitted complaint.</p>
       <p className="breadcrumb">
-        <Link to="/complaints">My complaints</Link>
+        <Link to={paths.complaints}>My complaints</Link>
         <span> / </span>
         <span>{ref}</span>
       </p>
@@ -718,7 +723,7 @@ export function ComplaintDetail() {
               <Link
                 key={candidate.id}
                 className="similar-row"
-                to={`/complaints/${candidate.id}`}
+                to={paths.complaint(candidate.id)}
               >
                 <span className="similar-ref">{complaintRef(candidate.id, candidate.created_at)}</span>
                 <span className="similar-main">

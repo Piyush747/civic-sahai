@@ -38,7 +38,7 @@ def test_create_and_get_complaint():
     assert user.json()["initials"] == "TC"
     assert user.json()["user_type"] == "CITIZEN"
     assert user.json()["created_at"]
-    response = client.post("/api/v1/complaints", headers={"X-User-Id": user.json()["id"]}, json={"title": "Broken streetlight", "description": "The streetlight has been out for three nights.", "category": "STREETLIGHT", "location": {"latitude": 13, "longitude": 80, "address": "Test Road"}, "zone_id": "zone_01"})
+    response = client.post("/api/v1/complaints", headers={"X-User-Id": user.json()["id"]}, json={"title": "Broken streetlight", "description": "The streetlight has been out for three nights.", "category": "STREETLIGHT", "location": {"latitude": 13, "longitude": 80, "address": "Test Road"}, "zone_id": "zone_01", "image_ids": ["file-1"]})
     assert response.status_code == 201
     complaint_id = response.json()["id"]
     assert client.get(f"/api/v1/complaints/{complaint_id}").status_code == 200
@@ -46,7 +46,7 @@ def test_create_and_get_complaint():
 
 def test_missing_zone_is_stable_error():
     user = client.post("/api/v1/users", json={"name": "Another Citizen", "email": "another@example.com"})
-    response = client.post("/api/v1/complaints", headers={"X-User-Id": user.json()["id"]}, json={"title": "Broken road", "description": "A very large pothole is dangerous.", "category": "ROAD_DAMAGE", "location": {"latitude": 13, "longitude": 80, "address": "Test Road"}, "zone_id": "missing"})
+    response = client.post("/api/v1/complaints", headers={"X-User-Id": user.json()["id"]}, json={"title": "Broken road", "description": "A very large pothole is dangerous.", "category": "ROAD_DAMAGE", "location": {"latitude": 13, "longitude": 80, "address": "Test Road"}, "zone_id": "missing", "image_ids": ["file-1"]})
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "ZONE_NOT_FOUND"
 
@@ -102,6 +102,39 @@ def test_citizen_routes_require_user_id():
     assert form.status_code == 200
     names = [field["name"] for field in form.json()["data"]["form"]["fields"]]
     assert names == ["category", "description", "location.address", "attachments"]
+    photos = next(field for field in form.json()["data"]["form"]["fields"] if field["name"] == "attachments")
+    assert photos["required"] is True
+    assert photos["label"] == "Photos"
+    assert photos["minFiles"] == 1
+
+
+def test_complaint_requires_a_photo():
+    user = client.post("/api/v1/users", json={"name": "Photo Required", "email": "photo-required@example.com"}).json()
+    payload = {
+        "category": "ROAD_DAMAGE",
+        "description": "There is a large pothole near the bus stop, making it difficult for vehicles to pass safely.",
+        "location": {"address": "Sector 15, Main Road", "latitude": 13.02, "longitude": 80.22},
+    }
+    missing = client.post("/api/v1/citizen/complaint", headers={"X-User-Id": user["id"]}, json=payload)
+    assert missing.status_code == 422
+    empty = client.post(
+        "/api/v1/citizen/complaint",
+        headers={"X-User-Id": user["id"]},
+        json={**payload, "attachments": []},
+    )
+    assert empty.status_code == 422
+    internal = client.post(
+        "/api/v1/complaints",
+        headers={"X-User-Id": user["id"]},
+        json={
+            "title": "Broken streetlight",
+            "description": "The streetlight has been out for three nights.",
+            "category": "STREETLIGHT",
+            "location": {"latitude": 13, "longitude": 80, "address": "Test Road"},
+            "zone_id": "zone_01",
+        },
+    )
+    assert internal.status_code == 422
 
 
 def test_citizen_portal_scopes_complaints_to_the_header_user():
@@ -131,6 +164,7 @@ def test_citizen_portal_scopes_complaints_to_the_header_user():
             "category": "ROAD_DAMAGE",
             "description": "Another pothole was reported beside the same bus stop this morning.",
             "location": {"address": "Sector 15, Main Road", "latitude": 13.01, "longitude": 80.21},
+            "attachments": [{"fileId": "file-2002"}],
         },
     )
     assert other_created.status_code == 201
@@ -257,6 +291,7 @@ def test_location_status_and_outside_service_area_complaints():
             "category": "ROAD_DAMAGE",
             "description": "There is a large pothole outside the city service area for this portal.",
             "location": {"address": "MG Road", "latitude": 12.97, "longitude": 77.59},
+            "attachments": [{"fileId": "file-outside"}],
         },
     )
     assert rejected.status_code == 400

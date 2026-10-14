@@ -35,7 +35,7 @@ test('citizen requests send X-User-Id from the caller', async () => {
     category: 'ROAD_DAMAGE',
     description: 'There is a large pothole near the bus stop.',
     location: { address: 'Sector 15, Main Road', latitude: 12.97, longitude: 77.64 },
-    attachments: [],
+    attachments: [{ fileId: 'file-1' }],
   });
   expect(post).toHaveBeenCalledWith(
     '/api/v1/citizen/complaint',

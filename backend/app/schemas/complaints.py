@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.domain.complaints import ComplaintCategory, ComplaintStatus
 
 
@@ -17,7 +17,15 @@ class ComplaintCreate(BaseModel):
     category: ComplaintCategory
     location: Location
     zone_id: str = Field(min_length=1, max_length=64)
-    image_ids: list[str] = Field(default_factory=list, max_length=5)
+    image_ids: list[str] = Field(min_length=1, max_length=5)
+
+    @field_validator("image_ids")
+    @classmethod
+    def require_photos(cls, value: list[str]) -> list[str]:
+        cleaned = [item.strip() for item in value if item.strip()]
+        if not cleaned:
+            raise ValueError("At least one photo is required")
+        return cleaned
 
 
 class ComplaintRead(BaseModel):

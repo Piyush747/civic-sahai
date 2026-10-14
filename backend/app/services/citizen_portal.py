@@ -291,10 +291,11 @@ class CitizenPortalService:
                     },
                     {
                         "name": "attachments",
-                        "label": "Photos (optional)",
+                        "label": "Photos",
                         "type": "FILE_UPLOAD",
-                        "required": False,
+                        "required": True,
                         "acceptedFormats": ["image/jpeg", "image/png"],
+                        "minFiles": 1,
                         "maxFiles": 5,
                     },
                 ],

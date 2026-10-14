@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { expect, test, vi } from 'vitest';
@@ -187,6 +187,26 @@ test('home dashboard presents the report action from the Figma design', async ()
   );
   expect(await screen.findByText(/your recent complaints/i)).toBeInTheDocument();
   expect(homepageMock).toHaveBeenCalledWith('1001');
+});
+
+test('complaint form requires a photo before submit', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/citizen/complaints/new/usr-id=user_citizen_01']}>
+        <Routes>
+          <Route path="/citizen/complaints/new/:userRef" element={<ComplaintForm />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+  const submit = await screen.findByRole('button', { name: /submit complaint/i });
+  await waitFor(() => expect(submit).toBeEnabled());
+  expect(screen.getByText(/photos \*/i)).toBeInTheDocument();
+  fireEvent.click(submit);
+  expect(await screen.findByText(/add at least one photo/i)).toBeInTheDocument();
+  view.unmount();
 });
 
 test('complaint form searches places as the location is typed', async () => {

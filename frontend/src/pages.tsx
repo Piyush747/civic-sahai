@@ -210,6 +210,7 @@ export function ComplaintForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [photos, setPhotos] = useState<File[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const formQuery = useQuery({
     queryKey: ['citizen-complaint-form'],
@@ -316,7 +317,18 @@ export function ComplaintForm() {
       </p>
 
       <div className="register-layout">
-        <form className="register-card" onSubmit={handleSubmit((values) => mutation.mutate(values))} noValidate>
+        <form
+        className="register-card"
+        onSubmit={(event) => {
+          if (photos.length === 0) setPhotoError('Add at least one photo');
+          else setPhotoError(null);
+          void handleSubmit((values) => {
+            if (photos.length === 0) return;
+            mutation.mutate(values);
+          })(event);
+        }}
+        noValidate
+      >
           <h2>{content?.form.sectionTitle ?? 'Issue details'}</h2>
 
           <label className="field">
@@ -397,7 +409,10 @@ export function ComplaintForm() {
           <input type="hidden" {...register('longitude')} />
 
           <div className="field">
-            <span>{photoField?.label ?? 'Photos (optional)'}</span>
+            <span>
+              {photoField?.label ?? 'Photos'}
+              {(photoField?.required ?? true) ? ' *' : ''}
+            </span>
             <label className="photo-upload">
               <span className="photo-plus" aria-hidden>
                 +
@@ -415,6 +430,7 @@ export function ComplaintForm() {
                   const picked = Array.from(event.target.files ?? []);
                   const limit = photoField?.maxFiles ?? 5;
                   setPhotos((current) => [...current, ...picked].slice(0, limit));
+                  if (picked.length > 0) setPhotoError(null);
                   event.target.value = '';
                 }}
               />
@@ -441,6 +457,7 @@ export function ComplaintForm() {
                 ))}
               </ul>
             )}
+            {photoError && <small className="error">{photoError}</small>}
           </div>
           <p className="field-hint privacy">
             {content?.form.privacyNote ??

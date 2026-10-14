@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CitizenCategory(str, Enum):
@@ -25,9 +25,17 @@ class CitizenLocationIn(BaseModel):
 class CitizenAttachmentIn(BaseModel):
     file_id: str = Field(min_length=1, max_length=255, alias="fileId")
 
+    @field_validator("file_id")
+    @classmethod
+    def require_file_id(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("A photo is required")
+        return cleaned
+
 
 class CitizenComplaintCreate(BaseModel):
     category: CitizenCategory
     description: str = Field(min_length=10, max_length=2000)
     location: CitizenLocationIn
-    attachments: list[CitizenAttachmentIn] = Field(default_factory=list, max_length=5)
+    attachments: list[CitizenAttachmentIn] = Field(min_length=1, max_length=5)

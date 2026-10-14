@@ -7,7 +7,7 @@ export type ComplaintCreate = {
   category: Category;
   zone_id: string;
   location: { latitude: number; longitude: number; address: string };
-  image_ids?: string[];
+  image_ids: string[];
 };
 export type Complaint = ComplaintCreate & {
   id: string;
@@ -15,7 +15,6 @@ export type Complaint = ComplaintCreate & {
   priority_score: number | null;
   created_at: string;
   updated_at: string;
-  image_ids?: string[];
 };
 export type ComplaintList = { items: Complaint[]; skip: number; limit: number; total: number };
 
@@ -104,6 +103,7 @@ export type ComplaintFormField = {
   maxLength?: number;
   helperText?: string;
   acceptedFormats?: string[];
+  minFiles?: number;
   maxFiles?: number;
 };
 

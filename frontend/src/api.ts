@@ -10,6 +10,7 @@ import type {
   ComplaintList,
   Homepage,
   IncidentList,
+  LocationSearchResult,
   ZoneList,
 } from './types';
 
@@ -35,6 +36,12 @@ export const citizenApi = {
     (await http.get<{ data: Homepage }>('/api/v1/citizen/homepage', withUser(userId))).data.data,
   complaintForm: async () =>
     (await http.get<{ data: ComplaintFormContent }>('/api/v1/citizen/complaint-form')).data.data,
+  locationSearch: async (query: string, latitude: number, longitude: number) =>
+    (
+      await http.get<{ data: { places: LocationSearchResult[] } }>('/api/v1/citizen/location-search', {
+        params: { q: query, latitude, longitude },
+      })
+    ).data.data,
   createComplaint: async (userId: string, payload: CitizenComplaintCreate) =>
     (
       await http.post<{ data: CitizenComplaintCreated }>('/api/v1/citizen/complaint', payload, withUser(userId))

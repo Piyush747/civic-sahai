@@ -48,3 +48,10 @@ test('the complaint form request does not send a user id', async () => {
   await citizenApi.complaintForm();
   expect(get).toHaveBeenCalledWith('/api/v1/citizen/complaint-form');
 });
+
+test('location search request sends the typed place and map pin', async () => {
+  await citizenApi.locationSearch('Marina', 12.97, 77.59);
+  expect(get).toHaveBeenCalledWith('/api/v1/citizen/location-search', {
+    params: { q: 'Marina', latitude: 12.97, longitude: 77.59 },
+  });
+});

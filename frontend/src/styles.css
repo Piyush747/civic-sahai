@@ -842,18 +842,91 @@ small {
   margin-top: 2px;
 }
 
-.map-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 18px;
-  min-height: 112px;
+.location-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.complaint-map {
+  height: 240px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: #e8f0eb;
+  isolation: isolate;
+  z-index: 0;
+}
+
+.location-picker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.location-pin {
+  width: auto;
+  min-height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.location-suggest {
+  position: relative;
+}
+
+.location-suggest-list {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 8px 24px rgba(18, 41, 51, 0.08);
+}
+
+.location-suggest-list li {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 400;
+  padding: 8px;
+}
+
+.location-suggest-list button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.location-suggest-list button:hover {
+  background: var(--teal-soft);
+}
+
+.location-suggest-list strong {
+  font-size: 13px;
   font-weight: 600;
+}
+
+.location-suggest-list button span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .photo-upload {

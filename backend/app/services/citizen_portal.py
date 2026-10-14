@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import ceil
+from math import asin, ceil, cos, radians, sin, sqrt
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ComplaintNotFoundError, ZoneNotFoundError
-from app.db.models import Complaint, ComplaintImage, User, Zone
+from app.db.models import Complaint, ComplaintImage, Landmark, User, Zone
 from app.integrations.complaint_events import ComplaintEventPublisher
+from app.integrations.nearby_places import search_nearby_places, search_places
 from app.repositories.complaints import ComplaintRepository
 from app.repositories.users import UserRepository
 from app.schemas.citizen import CitizenComplaintCreate
@@ -190,6 +191,36 @@ class CitizenPortalService:
             "footerText": "Civic SahAI · Clear reports. Better civic services.",
         }
 
+    def location_suggestions(self, latitude: float, longitude: float) -> dict:
+        ranked = []
+        for landmark in self.db.scalars(select(Landmark)).all():
+            distance = _distance_meters(latitude, longitude, landmark.latitude, landmark.longitude)
+            if distance > 12_000:
+                continue
+            ranked.append(
+                {
+                    "id": landmark.id,
+                    "name": landmark.name,
+                    "landmarkType": landmark.landmark_type,
+                    "latitude": landmark.latitude,
+                    "longitude": landmark.longitude,
+                    "distanceMeters": distance,
+                }
+            )
+        ranked.sort(key=lambda item: item["distanceMeters"])
+        try:
+            places = _normalize_places(search_nearby_places(latitude, longitude))
+        except OSError:
+            places = []
+        return {"landmarks": ranked[:8], "nearbyPlaces": places}
+
+    def location_search(self, query: str, latitude: float | None, longitude: float | None) -> dict:
+        try:
+            places = search_places(query, latitude, longitude)
+        except OSError:
+            places = []
+        return {"places": places}
+
     def complaint_form(self) -> dict:
         return {
             "header": _portal_header(),
@@ -232,10 +263,10 @@ class CitizenPortalService:
                         "name": "location.address",
                         "label": "Location / landmark",
                         "type": "TEXT",
-                        "placeholder": "Street, area, nearby landmark",
+                        "placeholder": "Start typing a street or place",
                         "required": True,
                         "maxLength": 300,
-                        "helperText": "Pinpoint the issue as accurately as possible.",
+                        "helperText": "Matching places appear near the pin on the map.",
                     },
                     {
                         "name": "attachments",
@@ -506,3 +537,29 @@ class CitizenPortalService:
                 }
             )
         return events
+
+
+def _distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
+    radius = 6_371_000
+    phi1, phi2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlambda = radians(lon2 - lon1)
+    a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlambda / 2) ** 2
+    return round(2 * radius * asin(sqrt(a)))
+
+
+def _normalize_places(raw: list[dict]) -> list[dict]:
+    places = []
+    for item in raw[:6]:
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        places.append(
+            {
+                "name": name[:160],
+                "kind": str(item.get("kind") or "place")[:64],
+                "latitude": float(item["latitude"]),
+                "longitude": float(item["longitude"]),
+            }
+        )
+    return places

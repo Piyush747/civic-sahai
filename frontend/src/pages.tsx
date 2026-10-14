@@ -5,13 +5,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { citizenApi, complaintsApi } from './api';
+import { LocationPicker } from './location-picker';
 import { useCitizenPaths, useCitizenUserId } from './paths';
-import type { ComplaintFormField } from './types';
+import type { ComplaintFormField, LocationSearchResult } from './types';
 
 const registerSchema = z.object({
   category: z.string().min(1, 'Select an issue category'),
   description: z.string().min(10, 'Please add more detail').max(2000),
   address: z.string().min(3, 'Add a street, area, or landmark').max(300),
+  landmark: z.string().max(160).optional(),
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
 });
@@ -207,6 +209,7 @@ export function ComplaintForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [photos, setPhotos] = useState<File[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const formQuery = useQuery({
     queryKey: ['citizen-complaint-form'],
     queryFn: () => citizenApi.complaintForm(),
@@ -221,14 +224,38 @@ export function ComplaintForm() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       latitude: 13.0827,
       longitude: 80.2707,
+      landmark: '',
     },
   });
+  const latitude = watch('latitude');
+  const longitude = watch('longitude');
+  const address = watch('address');
+  const [placeQuery, setPlaceQuery] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPlaceQuery((address ?? '').trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [address]);
+  const placeSearch = useQuery({
+    queryKey: ['location-search', placeQuery, latitude, longitude],
+    queryFn: () => citizenApi.locationSearch(placeQuery, Number(latitude), Number(longitude)),
+    enabled: searchOpen && placeQuery.length >= 2 && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)),
+  });
+  const places = placeSearch.data?.places ?? [];
+  function choosePlace(place: LocationSearchResult) {
+    setSearchOpen(false);
+    setValue('address', place.label, { shouldValidate: true });
+    setValue('landmark', place.name, { shouldValidate: true });
+    setValue('latitude', place.latitude, { shouldValidate: true });
+    setValue('longitude', place.longitude, { shouldValidate: true });
+  }
   const mutation = useMutation({
     mutationFn: async (values: RegisterFormValues) => {
       const attachments: { fileId: string }[] = [];
@@ -241,6 +268,7 @@ export function ComplaintForm() {
         description: values.description,
         location: {
           address: values.address,
+          ...(values.landmark ? { landmark: values.landmark } : {}),
           latitude: values.latitude,
           longitude: values.longitude,
         },
@@ -301,14 +329,48 @@ export function ComplaintForm() {
 
           <label className="field">
             <span>{locationField?.label ?? 'Location / landmark'} *</span>
-            <input placeholder={locationField?.placeholder ?? 'Street, area, nearby landmark'} {...register('address')} />
+            <div className="location-suggest">
+              <input
+                placeholder={locationField?.placeholder ?? 'Street, area, or place'}
+                autoComplete="off"
+                {...register('address', {
+                  onChange: () => {
+                    setValue('landmark', '');
+                    setSearchOpen(true);
+                  },
+                })}
+              />
+              {searchOpen && placeQuery.length >= 2 && (
+                <ul className="location-suggest-list" role="listbox">
+                  {placeSearch.isFetching && places.length === 0 && <li>Searching places…</li>}
+                  {places.map((place) => (
+                    <li key={`${place.label}-${place.latitude}-${place.longitude}`}>
+                      <button type="button" onClick={() => choosePlace(place)}>
+                        <strong>{place.name}</strong>
+                        <span>{place.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {placeSearch.isSuccess && !placeSearch.isFetching && places.length === 0 && <li>No matching places.</li>}
+                </ul>
+              )}
+            </div>
             {errors.address && <small className="error">{String(errors.address.message)}</small>}
           </label>
-          <p className="field-hint">{locationField?.helperText ?? 'Pinpoint the issue as accurately as possible.'}</p>
+          <p className="field-hint">
+            {locationField?.helperText ??
+              'Results match what you type near the pin on the map. Move the pin or use my location first if you are elsewhere.'}
+          </p>
 
-          <div className="map-placeholder" role="img" aria-label="Map preview">
-            {content?.form.mapPreview.placeholder ?? 'Map preview · Select location'}
-          </div>
+          <LocationPicker
+            latitude={Number(latitude)}
+            longitude={Number(longitude)}
+            mapLabel={content?.form.mapPreview.placeholder ?? 'Map preview'}
+            onPositionChange={(nextLatitude, nextLongitude) => {
+              setValue('latitude', nextLatitude, { shouldValidate: true });
+              setValue('longitude', nextLongitude, { shouldValidate: true });
+            }}
+          />
           <input type="hidden" {...register('latitude')} />
           <input type="hidden" {...register('longitude')} />
 

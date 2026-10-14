@@ -36,8 +36,9 @@ vi.mock('./api', () => ({
     }),
     complaint: vi.fn(),
     complaints: vi.fn(),
-    complaintForm: vi.fn(),
+    complaintForm: vi.fn().mockResolvedValue(undefined),
     createComplaint: vi.fn(),
+    locationSearch: vi.fn().mockResolvedValue({ places: [] }),
   },
   complaintsApi: {
     uploadImage: vi.fn(),
@@ -81,10 +82,10 @@ test('citizen home uses the usr-id path and hides the admin link', async () => {
   );
 });
 
-test('the site root opens the citizen home for user 101', async () => {
+test('the site root opens the citizen home for user 1001', async () => {
   renderAt('/');
   expect(await screen.findByRole('heading', { name: /good (morning|afternoon|evening), piyush/i })).toBeInTheDocument();
-  expect(screen.getByTestId('path')).toHaveTextContent('/citizen/home/usr-id=101');
+  expect(screen.getByTestId('path')).toHaveTextContent('/citizen/home/usr-id=1001');
   expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
 });
 
@@ -95,6 +96,6 @@ test('admin home is /admin/home', async () => {
   expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/admin/home');
   expect(screen.getByRole('link', { name: /citizen portal/i })).toHaveAttribute(
     'href',
-    '/citizen/home/usr-id=101',
+    '/citizen/home/usr-id=1001',
   );
 });

@@ -1,6 +1,6 @@
 import { useLocation, useParams } from 'react-router-dom';
 
-export const DEFAULT_CITIZEN_USER_ID = '101';
+export const DEFAULT_CITIZEN_USER_ID = '1001';
 export const ADMIN_HOME = '/admin/home';
 
 export function citizenUserIdFromPath(pathname: string, param?: string) {

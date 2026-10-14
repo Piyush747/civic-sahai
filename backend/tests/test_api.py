@@ -171,6 +171,111 @@ def test_citizen_portal_scopes_complaints_to_the_header_user():
     assert no_header.json()["error"]["code"] == "USER_ID_REQUIRED"
 
 
+def test_location_suggestions_rank_saved_landmarks_ahead_of_nearby_places(monkeypatch):
+    from app.db.models import Landmark
+
+    with TestingSession() as db:
+        if db.get(Landmark, "landmark_near") is None:
+            db.add(Landmark(id="landmark_far", zone_id="zone_01", name="Far Hospital", landmark_type="HOSPITAL", latitude=13.2, longitude=80.2, criticality_weight=1))
+            db.add(Landmark(id="landmark_near", zone_id="zone_01", name="Near School", landmark_type="SCHOOL", latitude=13.001, longitude=80.001, criticality_weight=1))
+            db.commit()
+
+    def places(_latitude, _longitude):
+        return [{"name": "Anna Salai", "kind": "road", "latitude": 13.0, "longitude": 80.0}]
+
+    monkeypatch.setattr("app.services.citizen_portal.search_nearby_places", places)
+    response = client.get("/api/v1/citizen/location-suggestions", params={"latitude": 13.0, "longitude": 80.0})
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["landmarks"][0]["name"] == "Near School"
+    assert "Far Hospital" not in [item["name"] for item in body["landmarks"]]
+    assert body["landmarks"][0]["landmarkType"] == "SCHOOL"
+    assert body["landmarks"][0]["distanceMeters"] < 500
+    assert body["nearbyPlaces"] == [{"name": "Anna Salai", "kind": "road", "latitude": 13.0, "longitude": 80.0}]
+
+    def unavailable(_latitude, _longitude):
+        raise OSError("overpass down")
+
+    monkeypatch.setattr("app.services.citizen_portal.search_nearby_places", unavailable)
+    fallback = client.get("/api/v1/citizen/location-suggestions", params={"latitude": 13.0, "longitude": 80.0})
+    assert fallback.status_code == 200
+    assert fallback.json()["data"]["nearbyPlaces"] == []
+    assert fallback.json()["data"]["landmarks"][0]["name"] == "Near School"
+
+
+def test_nearby_place_parsers_keep_named_places_nearest_first():
+    from app.integrations.nearby_places import places_from_nominatim, places_from_overpass
+
+    overpass = places_from_overpass(
+        {
+            "elements": [
+                {"type": "node", "lat": 13.01, "lon": 80.01, "tags": {"name": "Spencer Plaza", "amenity": "marketplace"}},
+                {"type": "node", "lat": 13.02, "lon": 80.02, "tags": {"amenity": "cafe"}},
+                {"type": "node", "lat": 13.2, "lon": 80.2, "tags": {"name": "Far Park", "leisure": "park"}},
+            ]
+        },
+        13.0,
+        80.0,
+    )
+    assert [item["name"] for item in overpass] == ["Spencer Plaza", "Far Park"]
+    assert overpass[0]["kind"] == "marketplace"
+    nominatim = places_from_nominatim(
+        {"lat": "13.08", "lon": "80.27", "address": {"road": "Anna Salai", "suburb": "Teynampet", "city": "Chennai"}}
+    )
+    assert [item["name"] for item in nominatim] == ["Anna Salai", "Teynampet"]
+    assert nominatim[0]["kind"] == "road"
+
+
+def test_location_search_lists_matching_places(monkeypatch):
+    def places(query, latitude=None, longitude=None):
+        assert query == "Marina"
+        assert latitude == 13.0827
+        assert longitude == 80.2707
+        return [{"name": "Marina Beach", "label": "Marina Beach, Chennai", "latitude": 13.05, "longitude": 80.28}]
+
+    monkeypatch.setattr("app.services.citizen_portal.search_places", places)
+    response = client.get(
+        "/api/v1/citizen/location-search",
+        params={"q": "Marina", "latitude": 13.0827, "longitude": 80.2707},
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["places"] == [
+        {"name": "Marina Beach", "label": "Marina Beach, Chennai", "latitude": 13.05, "longitude": 80.28}
+    ]
+
+    def unavailable(_query, latitude=None, longitude=None):
+        raise OSError("nominatim down")
+
+    monkeypatch.setattr("app.services.citizen_portal.search_places", unavailable)
+    fallback = client.get(
+        "/api/v1/citizen/location-search",
+        params={"q": "Marina", "latitude": 13.0827, "longitude": 80.2707},
+    )
+    assert fallback.status_code == 200
+    assert fallback.json()["data"]["places"] == []
+    assert client.get("/api/v1/citizen/location-search", params={"q": "M"}).status_code == 422
+
+
+def test_place_search_parser_uses_the_display_name():
+    from app.integrations.nearby_places import places_from_search
+
+    places = places_from_search(
+        [
+            {"display_name": "Marina Beach, Chennai, Tamil Nadu, India", "lat": "13.0500", "lon": "80.2824"},
+            {"display_name": "Marina Beach, Chennai, Tamil Nadu, India", "lat": "13.0500", "lon": "80.2824"},
+            {"lat": "13.0", "lon": "80.0"},
+        ]
+    )
+    assert places == [
+        {
+            "name": "Marina Beach",
+            "label": "Marina Beach, Chennai, Tamil Nadu, India",
+            "latitude": 13.05,
+            "longitude": 80.2824,
+        }
+    ]
+
+
 def test_zone_crud_generates_id_and_updates():
     boundary = {"type": "Polygon", "coordinates": [[[80.20, 13.00], [80.24, 13.00], [80.24, 13.04], [80.20, 13.00]]]}
     created = client.post("/api/v1/zones", json={"city_id": "city_01", "name": "South Chennai", "population": 50000, "boundary": boundary})

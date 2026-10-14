@@ -40,6 +40,25 @@ def complaint_form(db: Session = Depends(get_db)):
     return {"data": CitizenPortalService(db).complaint_form()}
 
 
+@router.get("/location-suggestions")
+def location_suggestions(
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+    db: Session = Depends(get_db),
+):
+    return {"data": CitizenPortalService(db).location_suggestions(latitude, longitude)}
+
+
+@router.get("/location-search")
+def location_search(
+    q: str = Query(min_length=2, max_length=200),
+    latitude: float | None = Query(default=None, ge=-90, le=90),
+    longitude: float | None = Query(default=None, ge=-180, le=180),
+    db: Session = Depends(get_db),
+):
+    return {"data": CitizenPortalService(db).location_search(q, latitude, longitude)}
+
+
 @router.post("/complaint", status_code=201)
 def create_complaint(
     payload: CitizenComplaintCreate,

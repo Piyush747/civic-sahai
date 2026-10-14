@@ -117,6 +117,13 @@ export type ComplaintFormContent = {
   nextSteps: { title: string; steps: { step: number; text: string }[] };
 };
 
+export type LocationSearchResult = {
+  name: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+};
+
 export type CitizenComplaintCreated = {
   complaintId: string;
   referenceNumber: string;

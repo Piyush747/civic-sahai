@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { expect, test, vi } from 'vitest';
-import { ComplaintDetail, Home } from './pages';
+import { ComplaintDetail, ComplaintForm, Home } from './pages';
 
-const { homepageMock, complaintMock } = vi.hoisted(() => {
+const { homepageMock, complaintMock, complaintFormMock, locationSearchMock } = vi.hoisted(() => {
   const homepage = {
   header: {
     brandName: 'Civic SahAI',
@@ -40,6 +40,19 @@ const { homepageMock, complaintMock } = vi.hoisted(() => {
 };
   return {
     homepageMock: vi.fn().mockResolvedValue(homepage),
+    complaintFormMock: vi.fn().mockResolvedValue({
+      breadcrumbs: [{ label: 'My complaints' }, { label: 'Register a complaint' }],
+      form: {
+        sectionTitle: 'Issue details',
+        fields: [],
+        mapPreview: { placeholder: 'Map preview' },
+        privacyNote: 'Avoid sensitive details.',
+        submitButton: { label: 'Submit complaint', action: 'SUBMIT_COMPLAINT' },
+        cancelButton: { label: 'Cancel', action: 'CANCEL' },
+      },
+      nextSteps: { title: 'What happens next', steps: [] },
+    }),
+    locationSearchMock: vi.fn().mockResolvedValue({ places: [] }),
     complaintMock: vi.fn().mockResolvedValue({
       pageContent: {
         introText: 'Track the status and updates for your submitted complaint.',
@@ -85,11 +98,43 @@ vi.mock('./api', () => ({
     homepage: homepageMock,
     complaint: complaintMock,
     complaints: vi.fn(),
-    complaintForm: vi.fn(),
+    complaintForm: complaintFormMock,
     createComplaint: vi.fn(),
+    locationSearch: locationSearchMock,
   },
   complaintsApi: { uploadImage: vi.fn() },
 }));
+
+vi.mock('leaflet', () => {
+  const layer = () => {
+    const item = {
+      addTo: () => item,
+      on: () => item,
+      bindTooltip: () => item,
+      setLatLng: () => item,
+      addLayer: () => item,
+      clearLayers: () => undefined,
+    };
+    return item;
+  };
+  return {
+    default: {
+      map: () => {
+        const map = {
+          setView: () => map,
+          on: () => map,
+          remove: () => undefined,
+          invalidateSize: () => undefined,
+          panTo: () => undefined,
+        };
+        return map;
+      },
+      tileLayer: layer,
+      circleMarker: layer,
+      layerGroup: layer,
+    },
+  };
+});
 
 function renderHome() {
   const client = new QueryClient({
@@ -128,8 +173,40 @@ test('home dashboard presents the report action from the Figma design', async ()
   expect(await screen.findByRole('heading', { name: /good afternoon, piyush/i })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /report an issue/i })).toHaveAttribute(
     'href',
-    '/citizen/complaints/new/usr-id=101',
+    '/citizen/complaints/new/usr-id=1001',
   );
   expect(await screen.findByText(/your recent complaints/i)).toBeInTheDocument();
-  expect(homepageMock).toHaveBeenCalledWith('101');
+  expect(homepageMock).toHaveBeenCalledWith('1001');
+});
+
+test('complaint form searches places as the location is typed', async () => {
+  locationSearchMock.mockResolvedValue({
+    places: [
+      {
+        name: 'Marina Beach',
+        label: 'Marina Beach, Chennai',
+        latitude: 13.05,
+        longitude: 80.2824,
+      },
+    ],
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/citizen/complaints/new/usr-id=user_citizen_01']}>
+        <Routes>
+          <Route path="/citizen/complaints/new/:userRef" element={<ComplaintForm />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+  expect(screen.queryByRole('heading', { name: 'Landmarks' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Nearby places' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByPlaceholderText(/street, area, or place/i), { target: { value: 'Marina' } });
+  const match = await screen.findByRole('button', { name: /marina beach, chennai/i });
+  fireEvent.click(match);
+  expect(screen.getByPlaceholderText(/street, area, or place/i)).toHaveValue('Marina Beach, Chennai');
+  expect(document.querySelector('input[name="latitude"]')).toHaveValue('13.05');
+  expect(screen.queryByRole('button', { name: /marina beach, chennai/i })).not.toBeInTheDocument();
 });

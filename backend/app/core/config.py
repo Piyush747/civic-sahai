@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     ai_enabled: bool = False
     kafka_enabled: bool = False
     kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_security_protocol: str = "PLAINTEXT"
+    kafka_sasl_mechanism: str = "SCRAM-SHA-256"
+    kafka_sasl_username: str | None = None
+    kafka_sasl_password: str | None = None
+    kafka_ssl_cafile: str | None = None
+    kafka_ssl_certfile: str | None = None
+    kafka_ssl_keyfile: str | None = None
+    kafka_ssl_insecure: bool = False
     kafka_complaint_topic: str = "civic-sahai.complaint-received"
     kafka_consumer_group: str = "civic-sahai.incident-clustering"
     kafka_dead_letter_topic: str = "civic-sahai.complaint-clustering-dlq"

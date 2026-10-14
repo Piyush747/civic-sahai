@@ -7,7 +7,7 @@ from typing import Protocol
 
 from app.core.config import Settings
 from app.db.models import Complaint
-
+from app.integrations.kafka_config import kafka_connection_options
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,9 @@ class KafkaComplaintEventPublisher:
         from kafka import KafkaProducer
 
         self.topic = settings.kafka_complaint_topic
+        kafka_options = kafka_connection_options(settings)
         self.producer = KafkaProducer(
-            bootstrap_servers=settings.kafka_bootstrap_servers,
+            **kafka_options,
             acks="all",
             retries=3,
             request_timeout_ms=10000,

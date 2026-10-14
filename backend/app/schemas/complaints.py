@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from app.domain.complaints import ComplaintCategory, ComplaintStatus
@@ -15,6 +17,7 @@ class ComplaintCreate(BaseModel):
     category: ComplaintCategory
     location: Location
     zone_id: str = Field(min_length=1, max_length=64)
+    image_ids: list[str] = Field(default_factory=list, max_length=5)
 
 
 class ComplaintRead(BaseModel):
@@ -29,6 +32,7 @@ class ComplaintRead(BaseModel):
     priority_score: float | None
     created_at: datetime
     updated_at: datetime
+    image_ids: list[str] = Field(default_factory=list)
 
 
 class ComplaintList(BaseModel):

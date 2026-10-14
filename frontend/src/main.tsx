@@ -10,6 +10,19 @@ import './styles.css';
 
 const queryClient = new QueryClient();
 
+const fallbackHelp = {
+  title: 'Need help?',
+  description:
+    'Call the civic helpline if you have questions about a report, or if location or issue details need to be corrected.',
+  phoneLabel: 'Civic helpline',
+  phoneNumber: '1800-123-1916',
+  hours: 'Monday to Saturday, 8:00 AM – 8:00 PM',
+};
+
+function telHref(phoneNumber: string) {
+  return `tel:${phoneNumber.replace(/\D/g, '')}`;
+}
+
 function CitizenLayout() {
   const paths = useCitizenPaths();
   const userId = useCitizenUserId();
@@ -18,6 +31,7 @@ function CitizenLayout() {
     queryFn: () => citizenApi.homepage(userId),
   });
   const header = homepage.data?.header;
+  const help = homepage.data?.helpSection ?? fallbackHelp;
   const navigation = header?.navigation ?? [
     { label: 'My complaints', action: 'VIEW_COMPLAINTS' },
     { label: 'Help', action: 'HELP' },
@@ -55,7 +69,20 @@ function CitizenLayout() {
       <main>
         <Outlet />
       </main>
-      <footer id="help">{homepage.data?.footerText ?? 'Civic SahAI · Clear reports. Better civic services.'}</footer>
+      <footer id="help" className="site-footer">
+        <div className="help-block">
+          <h2>{help.title}</h2>
+          <p>{help.description}</p>
+          <p className="help-phone">
+            <span>{help.phoneLabel}</span>
+            <a href={telHref(help.phoneNumber)}>{help.phoneNumber}</a>
+          </p>
+          <p className="help-hours">{help.hours}</p>
+        </div>
+        <p className="footer-tagline">
+          {homepage.data?.footerText ?? 'Civic SahAI · Clear reports. Better civic services.'}
+        </p>
+      </footer>
     </>
   );
 }

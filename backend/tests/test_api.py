@@ -15,7 +15,11 @@ with TestingSession() as db:
     db.add(User(id="admin_01", name="Test Admin", initials="TA", email="admin@example.com", user_type="CITY_ADMIN"))
     db.add(City(id="city_01", name="Test City", admin_user_id="admin_01"))
     db.commit()
-    db.add(Zone(id="zone_01", city_id="city_01", name="Test", population=1))
+    test_boundary = {
+        "type": "Polygon",
+        "coordinates": [[[80.20, 13.00], [80.24, 13.00], [80.24, 13.04], [80.20, 13.04], [80.20, 13.00]]],
+    }
+    db.add(Zone(id="zone_01", city_id="city_01", name="Test", population=1, boundary=test_boundary))
     db.commit()
 
 
@@ -106,7 +110,7 @@ def test_citizen_portal_scopes_complaints_to_the_header_user():
     payload = {
         "category": "ROAD_DAMAGE",
         "description": "There is a large pothole near the bus stop, making it difficult for vehicles to pass safely.",
-        "location": {"address": "Sector 15, Main Road", "landmark": "Near the bus stop", "latitude": 12.9784, "longitude": 77.6408},
+        "location": {"address": "Sector 15, Main Road", "landmark": "Near the bus stop", "latitude": 13.02, "longitude": 80.22},
         "attachments": [{"fileId": "file-2001"}],
     }
     created = client.post("/api/v1/citizen/complaint", headers={"X-User-Id": owner["id"]}, json=payload)
@@ -126,7 +130,7 @@ def test_citizen_portal_scopes_complaints_to_the_header_user():
         json={
             "category": "ROAD_DAMAGE",
             "description": "Another pothole was reported beside the same bus stop this morning.",
-            "location": {"address": "Sector 15, Main Road", "latitude": 12.98, "longitude": 77.64},
+            "location": {"address": "Sector 15, Main Road", "latitude": 13.01, "longitude": 80.21},
         },
     )
     assert other_created.status_code == 201
@@ -140,6 +144,13 @@ def test_citizen_portal_scopes_complaints_to_the_header_user():
     assert homepage.status_code == 200
     page = homepage.json()["data"]
     assert page["header"]["profileInitials"] == "PJ"
+    assert page["helpSection"] == {
+        "title": "Need help?",
+        "description": "Call the civic helpline if you have questions about a report, or if location or issue details need to be corrected.",
+        "phoneLabel": "Civic helpline",
+        "phoneNumber": "1800-123-1916",
+        "hours": "Monday to Saturday, 8:00 AM – 8:00 PM",
+    }
     assert page["welcomeSection"]["greeting"].endswith(", Piyush")
     assert page["summaryCards"][0] == {"key": "TOTAL", "title": "Total complaints", "count": 1, "description": "All reports you submitted"}
     assert [item["complaintId"] for item in page["complaints"]] == [complaint_id]
@@ -224,6 +235,32 @@ def test_nearby_place_parsers_keep_named_places_nearest_first():
     )
     assert [item["name"] for item in nominatim] == ["Anna Salai", "Teynampet"]
     assert nominatim[0]["kind"] == "road"
+
+
+def test_location_status_and_outside_service_area_complaints():
+    inside = client.get("/api/v1/citizen/location-status", params={"latitude": 13.02, "longitude": 80.22})
+    assert inside.status_code == 200
+    assert inside.json()["data"]["inServiceArea"] is True
+    assert inside.json()["data"]["cityName"] == "Test City"
+    assert inside.json()["data"]["zoneId"] == "zone_01"
+
+    outside = client.get("/api/v1/citizen/location-status", params={"latitude": 12.97, "longitude": 77.59})
+    assert outside.status_code == 200
+    assert outside.json()["data"]["inServiceArea"] is False
+    assert outside.json()["data"]["cityName"] == "Test City"
+
+    user = client.post("/api/v1/users", json={"name": "Outside Citizen", "email": "outside@example.com"}).json()
+    rejected = client.post(
+        "/api/v1/citizen/complaint",
+        headers={"X-User-Id": user["id"]},
+        json={
+            "category": "ROAD_DAMAGE",
+            "description": "There is a large pothole outside the city service area for this portal.",
+            "location": {"address": "MG Road", "latitude": 12.97, "longitude": 77.59},
+        },
+    )
+    assert rejected.status_code == 400
+    assert rejected.json()["error"]["code"] == "OUTSIDE_SERVICE_AREA"
 
 
 def test_location_search_lists_matching_places(monkeypatch):

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_complaint_event_publisher, require_user_id
-from app.core.exceptions import ComplaintNotFoundError, ZoneNotFoundError
+from app.core.exceptions import ComplaintNotFoundError, LocationOutsideServiceAreaError, ZoneNotFoundError
 from app.db.session import get_db
 from app.schemas.citizen import CitizenComplaintCreate
 from app.services.citizen_portal import CitizenPortalService, InvalidComplaintStatusError
@@ -24,6 +24,14 @@ def _call(action):
         raise HTTPException(404, {"code": "ZONE_NOT_FOUND", "message": "The requested zone was not found."})
     except InvalidComplaintStatusError:
         raise HTTPException(400, {"code": "INVALID_STATUS", "message": "Status filter is not recognized."})
+    except LocationOutsideServiceAreaError as exc:
+        raise HTTPException(
+            400,
+            {
+                "code": "OUTSIDE_SERVICE_AREA",
+                "message": f"This portal only accepts reports within {exc.city_name}. Move the pin inside the city.",
+            },
+        )
 
 
 def _file_base(request: Request) -> str:
@@ -47,6 +55,15 @@ def location_suggestions(
     db: Session = Depends(get_db),
 ):
     return {"data": CitizenPortalService(db).location_suggestions(latitude, longitude)}
+
+
+@router.get("/location-status")
+def location_status(
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+    db: Session = Depends(get_db),
+):
+    return {"data": CitizenPortalService(db).location_status(latitude, longitude)}
 
 
 @router.get("/location-search")

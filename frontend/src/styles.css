@@ -116,9 +116,47 @@ main {
   min-height: calc(100vh - 140px);
 }
 
-footer {
-  padding: 20px max(4.5vw, 72px) 32px;
+footer,
+.site-footer {
+  padding: 28px max(4.5vw, 72px) 36px;
   color: var(--muted);
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  scroll-margin-top: 88px;
+}
+
+.help-block h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.help-block p {
+  margin: 0 0 8px;
+  max-width: 52ch;
+}
+
+.help-phone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.help-phone a {
+  color: var(--teal);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.help-hours {
+  color: var(--muted);
+}
+
+.footer-tagline {
+  margin: 20px 0 0;
   font-size: 12px;
 }
 
@@ -861,6 +899,17 @@ small {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.service-area-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e8c4a8;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .location-pin {

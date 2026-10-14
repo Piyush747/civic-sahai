@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { expect, test, vi } from 'vitest';
 import { ComplaintDetail, ComplaintForm, Home } from './pages';
 
-const { homepageMock, complaintMock, complaintFormMock, locationSearchMock } = vi.hoisted(() => {
+const { homepageMock, complaintMock, complaintFormMock, locationSearchMock, locationStatusMock } = vi.hoisted(() => {
   const homepage = {
   header: {
     brandName: 'Civic SahAI',
@@ -36,6 +36,14 @@ const { homepageMock, complaintMock, complaintFormMock, locationSearchMock } = v
   },
   complaints: [],
   informationNote: 'Your reports help your local teams understand what needs attention.',
+  helpSection: {
+    title: 'Need help?',
+    description:
+      'Call the civic helpline if you have questions about a report, or if location or issue details need to be corrected.',
+    phoneLabel: 'Civic helpline',
+    phoneNumber: '1800-123-1916',
+    hours: 'Monday to Saturday, 8:00 AM – 8:00 PM',
+  },
   footerText: 'Civic SahAI · Clear reports. Better civic services.',
 };
   return {
@@ -53,6 +61,7 @@ const { homepageMock, complaintMock, complaintFormMock, locationSearchMock } = v
       nextSteps: { title: 'What happens next', steps: [] },
     }),
     locationSearchMock: vi.fn().mockResolvedValue({ places: [] }),
+    locationStatusMock: vi.fn().mockResolvedValue({ inServiceArea: true, cityName: 'Chennai', zoneId: 'zone_01', zoneName: 'Central' }),
     complaintMock: vi.fn().mockResolvedValue({
       pageContent: {
         introText: 'Track the status and updates for your submitted complaint.',
@@ -101,6 +110,7 @@ vi.mock('./api', () => ({
     complaintForm: complaintFormMock,
     createComplaint: vi.fn(),
     locationSearch: locationSearchMock,
+    locationStatus: locationStatusMock,
   },
   complaintsApi: { uploadImage: vi.fn() },
 }));

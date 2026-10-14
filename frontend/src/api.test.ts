@@ -49,6 +49,13 @@ test('the complaint form request does not send a user id', async () => {
   expect(get).toHaveBeenCalledWith('/api/v1/citizen/complaint-form');
 });
 
+test('location status request sends the map pin', async () => {
+  await citizenApi.locationStatus(13.08, 80.27);
+  expect(get).toHaveBeenCalledWith('/api/v1/citizen/location-status', {
+    params: { latitude: 13.08, longitude: 80.27 },
+  });
+});
+
 test('location search request sends the typed place and map pin', async () => {
   await citizenApi.locationSearch('Marina', 12.97, 77.59);
   expect(get).toHaveBeenCalledWith('/api/v1/citizen/location-search', {

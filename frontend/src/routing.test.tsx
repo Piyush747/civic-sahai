@@ -33,12 +33,21 @@ vi.mock('./api', () => ({
       complaints: [],
       informationNote: '',
       footerText: 'Civic SahAI · Clear reports. Better civic services.',
+      helpSection: {
+        title: 'Need help?',
+        description:
+          'Call the civic helpline if you have questions about a report, or if location or issue details need to be corrected.',
+        phoneLabel: 'Civic helpline',
+        phoneNumber: '1800-123-1916',
+        hours: 'Monday to Saturday, 8:00 AM – 8:00 PM',
+      },
     }),
     complaint: vi.fn(),
     complaints: vi.fn(),
     complaintForm: vi.fn().mockResolvedValue(undefined),
     createComplaint: vi.fn(),
     locationSearch: vi.fn().mockResolvedValue({ places: [] }),
+    locationStatus: vi.fn().mockResolvedValue({ inServiceArea: true, cityName: 'Chennai' }),
   },
   complaintsApi: {
     uploadImage: vi.fn(),
@@ -68,6 +77,15 @@ function renderAt(path: string) {
     </QueryClientProvider>,
   );
 }
+
+test('Help scrolls to the footer helpline details', async () => {
+  renderAt('/citizen/home/usr-id=101');
+  expect(await screen.findByRole('link', { name: 'Help' })).toHaveAttribute('href', '#help');
+  expect(document.getElementById('help')).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: 'Need help?' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '1800-123-1916' })).toHaveAttribute('href', 'tel:18001231916');
+  expect(screen.getByText(/monday to saturday, 8:00 am – 8:00 pm/i)).toBeInTheDocument();
+});
 
 test('citizen home uses the usr-id path and hides the admin link', async () => {
   renderAt('/citizen/home/usr-id=101');

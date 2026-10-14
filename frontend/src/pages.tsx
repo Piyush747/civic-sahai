@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import axios from 'axios';
 import { citizenApi, complaintsApi } from './api';
 import { LocationPicker } from './location-picker';
 import { useCitizenPaths, useCitizenUserId } from './paths';
@@ -249,6 +250,22 @@ export function ComplaintForm() {
     enabled: searchOpen && placeQuery.length >= 2 && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)),
   });
   const places = placeSearch.data?.places ?? [];
+  const [servicePin, setServicePin] = useState({ latitude: 13.0827, longitude: 80.2707 });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextLatitude = Number(latitude);
+      const nextLongitude = Number(longitude);
+      if (Number.isFinite(nextLatitude) && Number.isFinite(nextLongitude)) {
+        setServicePin({ latitude: nextLatitude, longitude: nextLongitude });
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [latitude, longitude]);
+  const serviceArea = useQuery({
+    queryKey: ['location-status', servicePin.latitude, servicePin.longitude],
+    queryFn: () => citizenApi.locationStatus(servicePin.latitude, servicePin.longitude),
+  });
+  const inServiceArea = serviceArea.data?.inServiceArea !== false;
   function choosePlace(place: LocationSearchResult) {
     setSearchOpen(false);
     setValue('address', place.label, { shouldValidate: true });
@@ -371,6 +388,11 @@ export function ComplaintForm() {
               setValue('longitude', nextLongitude, { shouldValidate: true });
             }}
           />
+          {serviceArea.data && !serviceArea.data.inServiceArea && (
+            <p className="service-area-warning" role="alert">
+              This portal only accepts reports within {serviceArea.data.cityName}. Move the pin inside the city.
+            </p>
+          )}
           <input type="hidden" {...register('latitude')} />
           <input type="hidden" {...register('longitude')} />
 
@@ -425,10 +447,21 @@ export function ComplaintForm() {
               'Avoid including sensitive personal information in photos or descriptions.'}
           </p>
 
-          {mutation.isError && <p className="error">We could not submit your report. Please try again.</p>}
+          {mutation.isError && (
+            <p className="error">
+              {axios.isAxiosError(mutation.error) &&
+              mutation.error.response?.data?.error?.code === 'OUTSIDE_SERVICE_AREA'
+                ? String(mutation.error.response.data.error.message)
+                : 'We could not submit your report. Please try again.'}
+            </p>
+          )}
 
           <div className="register-actions">
-            <button className="button submit-complaint" type="submit" disabled={mutation.isPending}>
+            <button
+              className="button submit-complaint"
+              type="submit"
+              disabled={mutation.isPending || serviceArea.isFetching || !inServiceArea}
+            >
               {mutation.isPending ? 'Submitting…' : (content?.form.submitButton.label ?? 'Submit complaint')}
             </button>
             <Link className="button-secondary" to={paths.complaints}>

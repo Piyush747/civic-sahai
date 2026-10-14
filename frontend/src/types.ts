@@ -83,6 +83,13 @@ export type Homepage = {
   };
   complaints: CitizenComplaintSummary[];
   informationNote: string;
+  helpSection: {
+    title: string;
+    description: string;
+    phoneLabel: string;
+    phoneNumber: string;
+    hours: string;
+  };
   footerText: string;
 };
 
@@ -122,6 +129,13 @@ export type LocationSearchResult = {
   label: string;
   latitude: number;
   longitude: number;
+};
+
+export type LocationStatus = {
+  inServiceArea: boolean;
+  cityName: string;
+  zoneId?: string;
+  zoneName?: string;
 };
 
 export type CitizenComplaintCreated = {

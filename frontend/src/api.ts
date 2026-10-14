@@ -11,6 +11,7 @@ import type {
   Homepage,
   IncidentList,
   LocationSearchResult,
+  LocationStatus,
   ZoneList,
 } from './types';
 
@@ -36,6 +37,12 @@ export const citizenApi = {
     (await http.get<{ data: Homepage }>('/api/v1/citizen/homepage', withUser(userId))).data.data,
   complaintForm: async () =>
     (await http.get<{ data: ComplaintFormContent }>('/api/v1/citizen/complaint-form')).data.data,
+  locationStatus: async (latitude: number, longitude: number) =>
+    (
+      await http.get<{ data: LocationStatus }>('/api/v1/citizen/location-status', {
+        params: { latitude, longitude },
+      })
+    ).data.data,
   locationSearch: async (query: string, latitude: number, longitude: number) =>
     (
       await http.get<{ data: { places: LocationSearchResult[] } }>('/api/v1/citizen/location-search', {

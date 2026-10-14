@@ -6,8 +6,8 @@ from math import asin, ceil, cos, radians, sin, sqrt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ComplaintNotFoundError, ZoneNotFoundError
-from app.db.models import Complaint, ComplaintImage, Landmark, User, Zone
+from app.core.exceptions import ComplaintNotFoundError, LocationOutsideServiceAreaError, ZoneNotFoundError
+from app.db.models import City, Complaint, ComplaintImage, Landmark, User, Zone
 from app.integrations.complaint_events import ComplaintEventPublisher
 from app.integrations.nearby_places import search_nearby_places, search_places
 from app.repositories.complaints import ComplaintRepository
@@ -188,6 +188,13 @@ class CitizenPortalService:
             },
             "complaints": [self._summary(item, include_code=True) for item in complaints[:20]],
             "informationNote": "Your reports help your local teams understand what needs attention. Similar reports may be grouped internally to coordinate repairs.",
+            "helpSection": {
+                "title": "Need help?",
+                "description": "Call the civic helpline if you have questions about a report, or if location or issue details need to be corrected.",
+                "phoneLabel": "Civic helpline",
+                "phoneNumber": "1800-123-1916",
+                "hours": "Monday to Saturday, 8:00 AM – 8:00 PM",
+            },
             "footerText": "Civic SahAI · Clear reports. Better civic services.",
         }
 
@@ -220,6 +227,20 @@ class CitizenPortalService:
         except OSError:
             places = []
         return {"places": places}
+
+    def location_status(self, latitude: float, longitude: float) -> dict:
+        city_name = self._portal_city_name()
+        try:
+            zone_id = self._zone_id(latitude, longitude)
+        except LocationOutsideServiceAreaError:
+            return {"inServiceArea": False, "cityName": city_name}
+        zone = self.db.get(Zone, zone_id)
+        return {
+            "inServiceArea": True,
+            "cityName": city_name,
+            "zoneId": zone_id,
+            "zoneName": zone.name if zone is not None else "",
+        }
 
     def complaint_form(self) -> dict:
         return {
@@ -266,7 +287,7 @@ class CitizenPortalService:
                         "placeholder": "Start typing a street or place",
                         "required": True,
                         "maxLength": 300,
-                        "helperText": "Matching places appear near the pin on the map.",
+                        "helperText": "Reports must be inside the city shown on the map. Matching places appear near the pin.",
                     },
                     {
                         "name": "attachments",
@@ -445,14 +466,21 @@ class CitizenPortalService:
             raise ComplaintNotFoundError(complaint_id)
         return complaint
 
+    def _portal_city_name(self) -> str:
+        city = self.db.scalar(select(City).order_by(City.id).limit(1))
+        return city.name if city is not None else "this city"
+
     def _zone_id(self, latitude: float, longitude: float) -> str:
         zones = list(self.db.scalars(select(Zone).order_by(Zone.id)))
         if not zones:
             raise ZoneNotFoundError("none")
-        for zone in zones:
-            if isinstance(zone.boundary, dict) and _contains(zone.boundary, longitude, latitude):
+        mapped = [zone for zone in zones if isinstance(zone.boundary, dict)]
+        if not mapped:
+            raise ZoneNotFoundError("none")
+        for zone in mapped:
+            if _contains(zone.boundary, longitude, latitude):
                 return zone.id
-        return zones[0].id
+        raise LocationOutsideServiceAreaError(self._portal_city_name())
 
     def _counts(self, complaints: list[Complaint]) -> dict[str, int]:
         counts = {"SUBMITTED": 0, "IN_PROGRESS": 0, "RESOLVED": 0, "NEEDS_ATTENTION": 0}

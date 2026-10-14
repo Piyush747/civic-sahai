@@ -9,6 +9,9 @@ def seed() -> None:
         if db.get(User, "user_city_admin_01") is None:
             db.add(User(id="user_city_admin_01", name="Chennai City Administrator", initials="CCA", email="admin@chennai.example", user_type="CITY_ADMIN"))
             db.commit()
+        if db.get(User, "101") is None:
+            db.add(User(id="101", name="Piyush Jain", initials="PJ", email="piyush.jain@example.com", user_type="CITIZEN"))
+            db.commit()
         if db.get(City, "city_01") is None:
             db.add(City(id="city_01", name="Chennai", admin_user_id="user_city_admin_01"))
             db.commit()

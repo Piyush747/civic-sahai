@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     clustering_max_distance_meters: float = 1000.0
     image_storage_provider: str = "noop"
     image_storage_base_url: str | None = None
+    image_storage_local_dir: str = ""
     filebase_endpoint_url: str = "https://s3.filebase.io"
     filebase_access_key_id: str | None = None
     filebase_secret_access_key: str | None = None

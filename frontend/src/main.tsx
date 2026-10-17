@@ -98,9 +98,7 @@ export function App() {
         <Route path="home" element={<AdminOverview />} />
         <Route path="incidents" element={<AdminPlaceholder title="Incidents" />} />
         <Route path="clusters" element={<AdminPlaceholder title="Incident clusters" />} />
-        <Route path="allocation" element={<AdminPlaceholder title="Resource allocation" />} />
         <Route path="zones" element={<AdminPlaceholder title="Zones & burden" />} />
-        <Route path="teams" element={<AdminPlaceholder title="Teams & capacity" />} />
         <Route path="reports" element={<AdminPlaceholder title="Reports & analytics" />} />
       </Route>
       <Route path="/citizen" element={<CitizenLayout />}>

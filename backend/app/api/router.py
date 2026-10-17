@@ -24,8 +24,6 @@ from app.api.citizen import router as citizen_router
 from app.api.admin_dashboard import router as admin_dashboard_router
 from app.api.admin_incidents import router as admin_incidents_router
 from app.api.admin_complaints import router as admin_complaints_router
-from app.api.admin_allocation_recommendations import router as admin_allocation_recommendations_router
-from app.api.admin_assignments import router as admin_assignments_router
 from app.domain.incidents import IncidentStatus
 from app.domain.complaints import ComplaintCategory, ComplaintStatus
 
@@ -34,8 +32,6 @@ router.include_router(citizen_router)
 router.include_router(admin_dashboard_router)
 router.include_router(admin_incidents_router)
 router.include_router(admin_complaints_router)
-router.include_router(admin_allocation_recommendations_router)
-router.include_router(admin_assignments_router)
 
 
 def to_read(complaint) -> ComplaintRead:

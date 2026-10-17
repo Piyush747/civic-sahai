@@ -25,7 +25,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise RuntimeError(
-        "Resource-allocation tables and their data cannot be restored automatically. "
-        "Restore from backup before downgrading this migration."
-    )
+    # The removed tables are intentionally not recreated because their data
+    # cannot be recovered. A downgrade continues through the historical
+    # migrations, which remove the schema they originally created.
+    pass

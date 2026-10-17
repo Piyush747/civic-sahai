@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     filebase_region: str = "auto"
     filebase_signature_version: str = "v4"
     filebase_bucket: str = "civic-sahai-complaints"
+    city_timezone: str = "Asia/Kolkata"
+    admin_dashboard_max_custom_days: int = 90
+    admin_dashboard_default_sla_hours: int = 72
+    admin_dashboard_pressure_overloaded_ratio: float = 1.0
+    admin_dashboard_pressure_under_pressure_ratio: float = 0.75
+    admin_dashboard_pressure_spare_ratio: float = 0.25
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     @field_validator("cors_allowed_origins", mode="before")

@@ -21,11 +21,13 @@ from app.services.landmarks import LandmarkNotFoundError, LandmarkService, Landm
 from app.schemas.incidents import IncidentList, IncidentRead, IncidentStatusUpdate
 from app.services.incidents import IncidentAdministratorError, IncidentNotFoundError, IncidentService
 from app.api.citizen import router as citizen_router
+from app.api.admin_dashboard import router as admin_dashboard_router
 from app.domain.incidents import IncidentStatus
 from app.domain.complaints import ComplaintCategory, ComplaintStatus
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(citizen_router)
+router.include_router(admin_dashboard_router)
 
 
 def to_read(complaint) -> ComplaintRead:

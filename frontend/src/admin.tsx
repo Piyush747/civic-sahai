@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { incidentsApi, zonesApi } from './api';
-import { ADMIN_HOME, citizenPaths, DEFAULT_CITIZEN_USER_ID } from './paths';
+import { adminDashboardApi, incidentsApi, zonesApi } from './api';
+import { ADMIN_HOME, citizenPaths, DEFAULT_ADMIN_USER_ID, DEFAULT_CITIZEN_USER_ID } from './paths';
 
 const navItems: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: ADMIN_HOME, label: 'Overview', icon: '▦', end: true },
@@ -120,6 +120,11 @@ export function AdminLayout() {
 }
 
 export function AdminOverview() {
+  const overviewQuery = useQuery({
+    queryKey: ['admin-overview'],
+    queryFn: () => adminDashboardApi.overview(DEFAULT_ADMIN_USER_ID),
+    retry: false,
+  });
   const incidentsQuery = useQuery({
     queryKey: ['admin-incidents'],
     queryFn: incidentsApi.list,
@@ -134,6 +139,7 @@ export function AdminOverview() {
   const liveIncidents = incidentsQuery.data?.items ?? [];
   const liveZones = zonesQuery.data?.items ?? [];
   const usingLiveRows = liveIncidents.length > 0;
+  const overview = overviewQuery.data;
 
   const liveOpenRows = liveIncidents
     .filter((item) => item.status === 'OPEN' || item.status === 'IN_PROGRESS')
@@ -175,22 +181,22 @@ export function AdminOverview() {
       <div className="admin-kpi-grid">
         <article className="admin-kpi accent-blue">
           <p className="kpi-label">Reported incidents</p>
-          <p className="kpi-value">1,248</p>
+          <p className="kpi-value">{overview ? overview.incident_trends.reduce((sum, item) => sum + item.reported, 0) : '1,248'}</p>
           <p className="kpi-detail blue">↑ 12% vs last 30 days</p>
         </article>
         <article className="admin-kpi accent-teal">
           <p className="kpi-label">Active issue clusters</p>
-          <p className="kpi-value">386</p>
+          <p className="kpi-value">{overview ? overview.summary.open_incidents + overview.summary.in_progress_incidents : '386'}</p>
           <p className="kpi-detail teal">Distinct operational issues</p>
         </article>
         <article className="admin-kpi accent-critical">
           <p className="kpi-label">Open incidents</p>
-          <p className="kpi-value">{usingLiveRows ? String(liveOpenRows.length || liveIncidents.length) : '214'}</p>
+          <p className="kpi-value">{overview ? overview.summary.open_incidents : usingLiveRows ? String(liveOpenRows.length || liveIncidents.length) : '214'}</p>
           <p className="kpi-detail critical">68 high / critical priority</p>
         </article>
         <article className="admin-kpi accent-amber">
           <p className="kpi-label">Awaiting allocation</p>
-          <p className="kpi-value">42</p>
+          <p className="kpi-value">{overview ? overview.summary.waiting_too_long_incidents : '42'}</p>
           <p className="kpi-detail amber">17 need action today</p>
         </article>
       </div>

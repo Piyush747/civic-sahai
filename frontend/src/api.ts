@@ -13,6 +13,7 @@ import type {
   LocationSearchResult,
   LocationStatus,
   ZoneList,
+  CityOverview,
 } from './types';
 
 const http = axios.create({
@@ -99,4 +100,9 @@ export const incidentsApi = {
 
 export const zonesApi = {
   list: async () => (await http.get<ZoneList>('/api/v1/zones')).data,
+};
+
+export const adminDashboardApi = {
+  overview: async (userId: string, period = '15d') =>
+    (await http.get<CityOverview>('/api/v1/admin/dashboard/overview', { params: { period }, ...withUser(userId) })).data,
 };

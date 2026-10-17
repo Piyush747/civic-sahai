@@ -2,7 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Link, NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { AdminLayout, AdminOverview, AdminPlaceholder } from './admin';
+import { AdminLayout, AdminPlaceholder, AdminWorkflow } from './admin';
+import { AdminCityOverview } from './admin-city';
+import { AdminZoneOverview } from './admin-zone';
+import { AdminIncidentDetails } from './admin-incident';
+import { AdminIncidentList } from './admin-incident-list';
+import { AdminComplaintDetails } from './admin-complaint';
+import { AdminAllocationReview } from './admin-allocation';
 import { citizenApi } from './api';
 import { ComplaintForm, ComplaintDetail, ComplaintListPage, Home } from './pages';
 import { citizenPaths, DEFAULT_CITIZEN_USER_ID, useCitizenPaths, useCitizenUserId } from './paths';
@@ -93,9 +99,18 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to={defaultCitizenHome} replace />} />
+      <Route path="/admin/workflow" element={<AdminWorkflow />} />
+      <Route path="/admin/home" element={<AdminCityOverview />} />
+      <Route path="/admin/city-overview" element={<Navigate to="/admin/home" replace />} />
+      <Route path="/admin/zone-overview" element={<AdminZoneOverview />} />
+      <Route path="/admin/incident-list" element={<AdminIncidentList />} />
+      <Route path="/admin/incident-details/:incidentId" element={<AdminIncidentDetails />} />
+      <Route path="/admin/incident-details" element={<AdminIncidentDetails />} />
+      <Route path="/admin/complaint-details/:complaintId" element={<AdminComplaintDetails />} />
+      <Route path="/admin/complaint-details" element={<AdminComplaintDetails />} />
+      <Route path="/admin/allocation-review" element={<AdminAllocationReview />} />
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="home" replace />} />
-        <Route path="home" element={<AdminOverview />} />
+        <Route index element={<Navigate to="/admin/home" replace />} />
         <Route path="incidents" element={<AdminPlaceholder title="Incidents" />} />
         <Route path="clusters" element={<AdminPlaceholder title="Incident clusters" />} />
         <Route path="allocation" element={<AdminPlaceholder title="Resource allocation" />} />

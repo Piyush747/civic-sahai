@@ -34,8 +34,15 @@ export type Incident = {
 };
 export type IncidentList = { items: Incident[]; total: number };
 
+export type DashboardSummary = {
+  open_incidents: number;
+  in_progress_incidents: number;
+  resolved_incidents: number;
+  waiting_too_long_incidents: number;
+};
+
 export type CityOverview = {
-  summary: { open_incidents: number; in_progress_incidents: number; resolved_incidents: number; waiting_too_long_incidents: number };
+  summary: DashboardSummary;
   zone_pressure: { zone_id: string; zone_name: string; open_incidents: number; available_teams: number; deployed_teams: number; total_teams: number; pressure_level: string; boundary: Record<string, unknown> | null }[];
   incident_trends: { date: string; reported: number; resolved: number }[];
   period: string | null;
@@ -43,6 +50,21 @@ export type CityOverview = {
   to_date: string;
   timezone: string;
   data_as_of: string;
+};
+
+export type ZoneOverview = {
+  data: {
+    zone: { id: string; name: string; city_id: string; pressure_level: string };
+    summary: DashboardSummary;
+    incident_types: { incident_type_id: string; name: string; incident_count: number }[];
+    incident_trends: { date: string; reported: number; resolved: number }[];
+    assignment_queue: {
+      total_count: number;
+      items: { incident_id: string; incident_type_id: string; incident_type: string; priority: string | null; created_at: string; waiting_too_long: boolean }[];
+    };
+    response_health: { available_teams: number; deployed_teams: number; total_teams: number; pressure_level: string };
+  };
+  meta: { period: string | null; from_date: string; to_date: string; timezone: string; data_as_of: string };
 };
 
 export type Zone = {

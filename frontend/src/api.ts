@@ -9,11 +9,13 @@ import type {
   ComplaintFormContent,
   ComplaintList,
   Homepage,
+  Incident,
   IncidentList,
   LocationSearchResult,
   LocationStatus,
   ZoneList,
   CityOverview,
+  ZoneOverview,
 } from './types';
 
 const http = axios.create({
@@ -96,6 +98,7 @@ export const complaintsApi = {
 
 export const incidentsApi = {
   list: async () => (await http.get<IncidentList>('/api/v1/incidents')).data,
+  get: async (id: string) => (await http.get<Incident>(`/api/v1/incidents/${encodeURIComponent(id)}`)).data,
 };
 
 export const zonesApi = {
@@ -105,4 +108,11 @@ export const zonesApi = {
 export const adminDashboardApi = {
   overview: async (userId: string, period = '15d') =>
     (await http.get<CityOverview>('/api/v1/admin/dashboard/overview', { params: { period }, ...withUser(userId) })).data,
+  zoneOverview: async (userId: string, zoneId: string, period = '15d') =>
+    (
+      await http.get<ZoneOverview>(`/api/v1/admin/zones/${encodeURIComponent(zoneId)}/overview`, {
+        params: { period },
+        ...withUser(userId),
+      })
+    ).data,
 };

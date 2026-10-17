@@ -337,6 +337,99 @@ export function AdminOverview() {
   );
 }
 
+const workflowSteps = [
+  {
+    number: '01',
+    tone: 'teal',
+    title: 'Citizen reports an issue',
+    body: 'A resident submits a complaint with category, location, description, and optional evidence.',
+    badge: 'New complaint',
+  },
+  {
+    number: '02',
+    tone: 'blue',
+    title: 'Match or create incident',
+    body: 'AI compares location, category, time, and context to link it to an existing cluster—or creates a new incident in that zone.',
+    badge: 'Existing cluster / new incident',
+  },
+  {
+    number: '03',
+    tone: 'amber',
+    title: 'City sees the pressure',
+    body: 'The cluster updates zone-level counts, priority, age, population impact, and open-status mix.',
+    badge: 'City & zone overview',
+  },
+  {
+    number: '04',
+    tone: 'teal',
+    title: 'Recommend resources',
+    body: 'Eligible teams are ranked using skills, effort, travel, and minimum coverage in both home and receiving zones.',
+    badge: 'Cross-zone options',
+  },
+  {
+    number: '05',
+    tone: 'red',
+    title: 'Admin decides & tracks',
+    body: 'Approve, reject, or request revision. Every decision is logged and the incident moves through dispatch to resolution.',
+    badge: 'Decision & audit trail',
+  },
+] as const;
+
+const workflowNav = [
+  { to: ADMIN_HOME, label: 'Overview' },
+  { to: '/admin/zones', label: 'Zones' },
+  { to: '/admin/allocation', label: 'Resource allocation' },
+  { to: '/admin/incidents', label: 'Incidents' },
+] as const;
+
+export function AdminWorkflow() {
+  return (
+    <div className="admin-flow">
+      <header className="admin-flow-header">
+        <div className="brand-block">
+          <Link className="brand" to="/admin/workflow">
+            Civic SahAI
+          </Link>
+          <span className="portal-badge">City admin</span>
+        </div>
+        <nav className="admin-flow-nav" aria-label="City administration">
+          {workflowNav.map((item) => (
+            <NavLink key={item.to} to={item.to}>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </header>
+      <main>
+        <h1>From citizen voice to city action</h1>
+        <p className="admin-flow-lead">
+          One connected workflow: turn individual complaints into prioritized incidents, compare zone
+          pressure, and approve the right response.
+        </p>
+        <ol className="workflow-steps">
+          {workflowSteps.map((step) => (
+            <li key={step.number} className={`workflow-step tone-${step.tone}`}>
+              <span className="workflow-number">{step.number}</span>
+              <div className="workflow-copy">
+                <h2>{step.title}</h2>
+                <p>{step.body}</p>
+              </div>
+              <span className="workflow-badge">{step.badge}</span>
+            </li>
+          ))}
+        </ol>
+        <section className="workflow-outcome">
+          <h2>Administrator outcome</h2>
+          <p>
+            See what needs attention, why it is prioritized, where capacity is constrained, and which
+            resource movement is safe to approve.
+          </p>
+        </section>
+      </main>
+    </div>
+  );
+}
+
 export function AdminPlaceholder({ title }: { title: string }) {
   return (
     <section className="admin-placeholder">

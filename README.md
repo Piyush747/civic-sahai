@@ -58,7 +58,7 @@ Configure `KAFKA_ENABLED=true`, `GEMINI_API_KEY`, and the Filebase credentials i
 python -m app.workers.complaint_clustering_consumer
 ```
 
-Apply the idempotency migration before starting the worker:
+Apply migrations through head before starting the worker. That revision creates the full schema, including `uq_incident_complaints_complaint_id`, so a complaint can be linked to only one incident:
 
 ```bash
 alembic upgrade head

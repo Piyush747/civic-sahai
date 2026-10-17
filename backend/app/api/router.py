@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_complaint_event_publisher, get_user_id
+from app.api.dependencies import get_complaint_event_publisher, get_image_storage, get_user_id
 from app.core.exceptions import ComplaintNotFoundError, ZoneNotFoundError
 from app.db.session import get_db
 from app.schemas.complaints import ComplaintCreate, ComplaintList, ComplaintRead, ErrorResponse, Location
@@ -17,10 +20,22 @@ from app.schemas.landmarks import LandmarkCreate, LandmarkList, LandmarkRead, La
 from app.services.landmarks import LandmarkNotFoundError, LandmarkService, LandmarkZoneNotFoundError
 from app.schemas.incidents import IncidentList, IncidentRead, IncidentStatusUpdate
 from app.services.incidents import IncidentAdministratorError, IncidentNotFoundError, IncidentService
+from app.api.citizen import router as citizen_router
+from app.api.admin_dashboard import router as admin_dashboard_router
+from app.api.admin_incidents import router as admin_incidents_router
+from app.api.admin_complaints import router as admin_complaints_router
+from app.api.admin_allocation_recommendations import router as admin_allocation_recommendations_router
+from app.api.admin_assignments import router as admin_assignments_router
 from app.domain.incidents import IncidentStatus
 from app.domain.complaints import ComplaintCategory, ComplaintStatus
 
 router = APIRouter(prefix="/api/v1")
+router.include_router(citizen_router)
+router.include_router(admin_dashboard_router)
+router.include_router(admin_incidents_router)
+router.include_router(admin_complaints_router)
+router.include_router(admin_allocation_recommendations_router)
+router.include_router(admin_assignments_router)
 
 
 def to_read(complaint) -> ComplaintRead:
@@ -237,6 +252,45 @@ def update_incident_status(incident_id: str, payload: IncidentStatusUpdate, db: 
 def list_complaints(skip: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), category: ComplaintCategory | None = None, status: ComplaintStatus | None = None, db: Session = Depends(get_db)):
     items, total = ComplaintService(db).list(skip, limit, category, status)
     return ComplaintList(items=[to_read(item) for item in items], skip=skip, limit=limit, total=total)
+
+
+_IMAGE_EXTENSIONS = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+}
+_MAX_IMAGE_BYTES = 5_000_000
+
+
+@router.post("/complaint-images", status_code=status.HTTP_201_CREATED, responses={400: {"model": ErrorResponse}})
+async def upload_complaint_image(request: Request, storage=Depends(get_image_storage)):
+    content_type = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    extension = _IMAGE_EXTENSIONS.get(content_type)
+    if extension is None:
+        raise HTTPException(400, {"code": "UNSUPPORTED_IMAGE_TYPE", "message": "Upload a JPG, PNG, WEBP, GIF, or SVG image."})
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, {"code": "EMPTY_IMAGE", "message": "The image file is empty."})
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(400, {"code": "IMAGE_TOO_LARGE", "message": "Images must be 5 MB or smaller."})
+    image_id = f"{uuid4().hex}.{extension}"
+    mime_type = "image/jpeg" if content_type == "image/jpg" else content_type
+    try:
+        storage.upload(image_id, data, mime_type)
+    except (OSError, ValueError):
+        raise HTTPException(503, {"code": "IMAGE_STORAGE_UNAVAILABLE", "message": "Image upload is not available."})
+    return {"image_id": image_id}
+
+
+@router.get("/complaint-images/{image_id:path}", responses={404: {"model": ErrorResponse}})
+def get_complaint_image(image_id: str, storage=Depends(get_image_storage)):
+    asset = storage.download(image_id)
+    if asset is None:
+        raise HTTPException(404, {"code": "IMAGE_NOT_FOUND", "message": "The requested image was not found."})
+    return Response(content=asset.data, media_type=asset.mime_type, headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintRead, responses={404: {"model": ErrorResponse}})

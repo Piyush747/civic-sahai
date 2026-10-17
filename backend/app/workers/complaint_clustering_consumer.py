@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.gemini_clustering import GeminiClusteringAnalyzer
 from app.integrations.image_storage import FilebaseImageStorage, HttpImageStorage, NoopImageStorage
+from app.integrations.kafka_config import kafka_connection_options
 from app.services.clustering import IncidentCandidateSelector, IncidentClusteringService
 
 logger = logging.getLogger(__name__)
@@ -58,9 +59,10 @@ def run() -> None:
         image_storage = HttpImageStorage(settings.image_storage_base_url)
     else:
         image_storage = NoopImageStorage()
+    kafka_options = kafka_connection_options(settings)
     consumer = KafkaConsumer(
         settings.kafka_complaint_topic,
-        bootstrap_servers=settings.kafka_bootstrap_servers,
+        **kafka_options,
         group_id=settings.kafka_consumer_group,
         enable_auto_commit=False,
         value_deserializer=lambda value: json.loads(value.decode("utf-8")),

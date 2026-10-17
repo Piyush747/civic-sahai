@@ -5,6 +5,7 @@ import mimetypes
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 
@@ -21,6 +22,8 @@ class ImageAsset:
 
 class ImageStorage(Protocol):
     def download(self, image_id: str) -> ImageAsset | None: ...
+
+    def upload(self, image_id: str, data: bytes, mime_type: str) -> None: ...
 
 
 class HttpImageStorage:
@@ -45,6 +48,9 @@ class HttpImageStorage:
                 return ImageAsset(image_id=image_id, data=data, mime_type=content_type)
         except (OSError, ValueError):
             return None
+
+    def upload(self, image_id: str, data: bytes, mime_type: str) -> None:
+        raise OSError("HTTP image storage does not accept uploads.")
 
 
 class FilebaseImageStorage:
@@ -110,3 +116,63 @@ class FilebaseImageStorage:
 class NoopImageStorage:
     def download(self, image_id: str) -> ImageAsset | None:
         return None
+
+    def upload(self, image_id: str, data: bytes, mime_type: str) -> None:
+        raise OSError("Image storage is not configured.")
+
+
+class LocalImageStorage:
+    """Stores complaint images on the local filesystem for development and tests."""
+
+    def __init__(self, directory: str | Path, max_bytes: int = 5_000_000):
+        self.directory = Path(directory)
+        self.max_bytes = max_bytes
+        self.directory.mkdir(parents=True, exist_ok=True)
+
+    def upload(self, image_id: str, data: bytes, mime_type: str) -> None:
+        path = self._path(image_id)
+        if path is None or len(data) > self.max_bytes or not mime_type.startswith("image/"):
+            raise ValueError("Invalid image upload.")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def download(self, image_id: str) -> ImageAsset | None:
+        path = self._path(image_id)
+        if path is None or not path.is_file():
+            return None
+        data = path.read_bytes()
+        if len(data) > self.max_bytes:
+            return None
+        mime_type = mimetypes.guess_type(image_id)[0] or "application/octet-stream"
+        if not mime_type.startswith("image/"):
+            return None
+        return ImageAsset(image_id=image_id, data=data, mime_type=mime_type)
+
+    def _path(self, image_id: str) -> Path | None:
+        if not image_id or image_id.startswith(("/", "\\")) or "\\" in image_id:
+            return None
+        parts = Path(image_id).parts
+        if any(part in {"", ".", ".."} for part in parts):
+            return None
+        root = self.directory.resolve()
+        path = (root / image_id).resolve()
+        if path != root and root not in path.parents:
+            return None
+        return path
+
+
+def open_image_storage(settings) -> ImageStorage:
+    provider = settings.image_storage_provider.lower()
+    if provider == "filebase" and settings.filebase_access_key_id and settings.filebase_secret_access_key:
+        return FilebaseImageStorage(
+            endpoint_url=settings.filebase_endpoint_url,
+            access_key_id=settings.filebase_access_key_id,
+            secret_access_key=settings.filebase_secret_access_key,
+            region=settings.filebase_region,
+            signature_version=settings.filebase_signature_version,
+            bucket=settings.filebase_bucket,
+        )
+    if provider == "http" and settings.image_storage_base_url:
+        return HttpImageStorage(settings.image_storage_base_url)
+    directory = settings.image_storage_local_dir or str(Path(__file__).resolve().parents[2] / "var" / "complaint-images")
+    return LocalImageStorage(directory)

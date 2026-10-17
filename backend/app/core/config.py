@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     ai_enabled: bool = False
     kafka_enabled: bool = False
     kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_security_protocol: str = "PLAINTEXT"
+    kafka_sasl_mechanism: str = "SCRAM-SHA-256"
+    kafka_sasl_username: str | None = None
+    kafka_sasl_password: str | None = None
+    kafka_ssl_cafile: str | None = None
+    kafka_ssl_certfile: str | None = None
+    kafka_ssl_keyfile: str | None = None
+    kafka_ssl_insecure: bool = False
     kafka_complaint_topic: str = "civic-sahai.complaint-received"
     kafka_consumer_group: str = "civic-sahai.incident-clustering"
     kafka_dead_letter_topic: str = "civic-sahai.complaint-clustering-dlq"
@@ -25,12 +33,19 @@ class Settings(BaseSettings):
     clustering_max_distance_meters: float = 1000.0
     image_storage_provider: str = "noop"
     image_storage_base_url: str | None = None
+    image_storage_local_dir: str = ""
     filebase_endpoint_url: str = "https://s3.filebase.io"
     filebase_access_key_id: str | None = None
     filebase_secret_access_key: str | None = None
     filebase_region: str = "auto"
     filebase_signature_version: str = "v4"
     filebase_bucket: str = "civic-sahai-complaints"
+    city_timezone: str = "Asia/Kolkata"
+    admin_dashboard_max_custom_days: int = 90
+    admin_dashboard_default_sla_hours: int = 72
+    admin_dashboard_pressure_overloaded_ratio: float = 1.0
+    admin_dashboard_pressure_under_pressure_ratio: float = 0.75
+    admin_dashboard_pressure_spare_ratio: float = 0.25
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     @field_validator("cors_allowed_origins", mode="before")

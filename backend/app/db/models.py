@@ -115,15 +115,61 @@ class Incident(Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    locality: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="OPEN", index=True)
     priority_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     priority_version: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     priority_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    response_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sla_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    sla_breached_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    recurrence_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     complaint_links: Mapped[list["IncidentComplaint"]] = relationship(back_populates="incident", cascade="all, delete-orphan")
     resource_requirements: Mapped[list["IncidentResourceRequirement"]] = relationship(back_populates="incident")
     allocations: Mapped[list["ResourceAllocation"]] = relationship(back_populates="incident")
+    assignments: Mapped[list["IncidentAssignment"]] = relationship(back_populates="incident", cascade="all, delete-orphan")
+    status_history: Mapped[list["IncidentStatusHistory"]] = relationship(back_populates="incident", cascade="all, delete-orphan")
+    recommendations: Mapped[list["AllocationRecommendation"]] = relationship(back_populates="incident", cascade="all, delete-orphan")
+
+
+class Team(Base):
+    __tablename__ = "teams"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    city_id: Mapped[str] = mapped_column(ForeignKey("cities.id"), nullable=False, index=True)
+    zone_id: Mapped[str] = mapped_column(ForeignKey("zones.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    availability_status: Mapped[str] = mapped_column(String(32), nullable=False, default="AVAILABLE")
+    capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IncidentAssignment(Base):
+    __tablename__ = "incident_assignments"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
+    team_id: Mapped[str] = mapped_column(ForeignKey("teams.id"), nullable=False, index=True)
+    assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    unassigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    assigned_by: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    recommendation_id: Mapped[Optional[str]] = mapped_column(ForeignKey("allocation_recommendations.id"), nullable=True)
+    incident: Mapped[Incident] = relationship(back_populates="assignments")
+    team: Mapped[Team] = relationship()
+
+
+class IncidentStatusHistory(Base):
+    __tablename__ = "incident_status_history"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    incident: Mapped[Incident] = relationship(back_populates="status_history")
 
 
 class IncidentComplaint(Base):
@@ -212,4 +258,32 @@ class ResourceAllocation(Base):
     incident: Mapped[Incident] = relationship(back_populates="allocations")
     source_zone: Mapped[Zone] = relationship()
     resource_type: Mapped[ResourceType] = relationship(back_populates="allocations")
+
+
+class AllocationRecommendation(Base):
+    __tablename__ = "allocation_recommendations"
+    __table_args__ = (
+        CheckConstraint("status IN ('AWAITING_DECISION', 'APPROVED', 'REJECTED', 'EXPIRED')", name="ck_allocation_recommendations_status"),
+        Index("ix_allocation_recommendations_incident_status", "incident_id", "status"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    reference_number: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="AWAITING_DECISION")
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    strategy_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    strategy_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_zone_id: Mapped[Optional[str]] = mapped_column(ForeignKey("zones.id"), nullable=True)
+    resource_type_id: Mapped[Optional[str]] = mapped_column(ForeignKey("resource_types.id"), nullable=True)
+    quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    priority_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rationale: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    trade_offs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    resident_locality_impact: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    historical_pattern: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    incident: Mapped[Incident] = relationship(back_populates="recommendations")
+    source_zone: Mapped[Optional[Zone]] = relationship(foreign_keys=[source_zone_id])
+    resource_type: Mapped[Optional[ResourceType]] = relationship()
 

@@ -7,9 +7,7 @@ const navItems: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: ADMIN_HOME, label: 'Overview', icon: '▦', end: true },
   { to: '/admin/incidents', label: 'Incidents', icon: '◉' },
   { to: '/admin/clusters', label: 'Incident clusters', icon: '◎' },
-  { to: '/admin/allocation', label: 'Resource allocation', icon: '⇄' },
   { to: '/admin/zones', label: 'Zones & burden', icon: '⌖' },
-  { to: '/admin/teams', label: 'Teams & capacity', icon: '♧' },
   { to: '/admin/reports', label: 'Reports & analytics', icon: '▤' },
 ];
 
@@ -36,30 +34,6 @@ const openIncidents = [
   { issue: 'Water leakage · 8 reports', zone: 'North', age: '3 days', priority: 'High' },
   { issue: 'Waste overflow · 11 reports', zone: 'Central', age: '2 days', priority: 'High' },
   { issue: 'Streetlight outage · 5 reports', zone: 'South', age: '1 day', priority: 'Normal' },
-] as const;
-
-const suggestions = [
-  {
-    severity: 'URGENT',
-    issue: 'Road damage · Central',
-    team: 'Road crew A',
-    impact: 'Critical priority · 2.5h effort',
-    rationale: 'Fits available capacity',
-  },
-  {
-    severity: 'RECOMMENDED',
-    issue: 'Water leakage · North',
-    team: 'Water team B',
-    impact: 'High priority · plumbing skills',
-    rationale: 'Travel estimate: 18 min',
-  },
-  {
-    severity: 'RECOMMENDED',
-    issue: 'Waste overflow · Central',
-    team: 'Sanitation team C',
-    impact: 'High demand · 1.5h effort',
-    rationale: 'Near current route',
-  },
 ] as const;
 
 function formatOpsDate(date = new Date()) {
@@ -195,7 +169,7 @@ export function AdminOverview() {
           <p className="kpi-detail critical">68 high / critical priority</p>
         </article>
         <article className="admin-kpi accent-amber">
-          <p className="kpi-label">Awaiting allocation</p>
+          <p className="kpi-label">Waiting too long</p>
           <p className="kpi-value">{overview ? overview.summary.waiting_too_long_incidents : '42'}</p>
           <p className="kpi-detail amber">17 need action today</p>
         </article>
@@ -223,7 +197,7 @@ export function AdminOverview() {
             ))}
           </div>
           <p className="panel-footnote">
-            Central zone has the highest workload relative to estimated team capacity.
+            Central zone has the highest reported open workload.
           </p>
         </article>
 
@@ -287,51 +261,15 @@ export function AdminOverview() {
           </div>
         </article>
 
-        <article className="admin-panel suggestions-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Suggested allocations</h2>
-              <p>Recommendations based on severity, skills and capacity</p>
-            </div>
-          </div>
-          <span className="panel-chip teal suggestions-chip">3 suggestions</span>
-          <div className="suggestion-list">
-            {suggestions.map((item) => (
-              <div key={item.issue} className="suggestion-card">
-                <span className={`status-chip compact ${priorityClass(item.severity)}`}>
-                  {item.severity}
-                </span>
-                <strong>{item.issue}</strong>
-                <div className="suggestion-meta">
-                  <span className="suggestion-team">{item.team}</span>
-                  <span>{item.impact}</span>
-                </div>
-                <div className="suggestion-footer">
-                  <span>{item.rationale}</span>
-                  <button type="button" className="button review-btn">
-                    Review
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="panel-footnote">
-            Suggestions are decision support; administrators confirm before capacity is committed.
-          </p>
-        </article>
       </div>
 
       <div className="city-insight">
         <div>
           <p className="insight-label">City insight</p>
           <p>
-            Central zone carries the highest open workload. Rebalance eligible teams after validating
-            the 18 critical/high-priority cases.
+            Central zone carries the highest open workload. Review the 18 critical/high-priority cases first.
           </p>
         </div>
-        <Link className="button insight-btn" to="/admin/allocation">
-          Review allocation queue
-        </Link>
       </div>
     </section>
   );

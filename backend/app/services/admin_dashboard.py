@@ -9,10 +9,10 @@ from sqlalchemy import case, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.models import City, Incident, ResourceAllocation, Zone, ZoneResource
-from app.schemas.admin_dashboard import (AssignmentQueue, AssignmentQueueItem, CityOverviewResponse, DashboardSummary,
-    IncidentTrend, IncidentTypeSummary, PolygonGeometry, ResponseHealth, ZoneOverviewData, ZoneOverviewMeta,
-    ZoneOverviewResponse, ZoneOverviewZone, ZonePressure)
+from app.db.models import City, Incident, Zone
+from app.schemas.admin_dashboard import (CityOverviewResponse, DashboardSummary, IncidentTrend,
+    IncidentTypeSummary, PolygonGeometry, ZoneOverviewData, ZoneOverviewMeta, ZoneOverviewResponse,
+    ZoneOverviewZone, ZonePressure)
 
 
 class AdminDashboardService:
@@ -62,19 +62,12 @@ class AdminDashboardService:
             if start_dt <= created < end_dt:
                 type_counts[item.category] = type_counts.get(item.category, 0) + 1
         incident_types = [IncidentTypeSummary(incident_type_id=key, name=self._category_name(key), incident_count=count) for key, count in sorted(type_counts.items(), key=lambda pair: (-pair[1], self._category_name(pair[0]), pair[0]))[:5]]
-        allocations = list(self.db.scalars(select(ResourceAllocation).where(ResourceAllocation.incident_id.in_([item.id for item in incidents])))) if incidents else []
-        active_assignment_ids = {item.incident_id for item in allocations if item.status == "COMMITTED"}
-        queue = [item for item in incidents if item.status in {"OPEN", "IN_PROGRESS"} and item.id not in active_assignment_ids]
-        queue.sort(key=lambda item: (not self._waiting_too_long(item), -(item.priority_score or 0), self._aware(item.created_at), item.id))
-        queue_items = [AssignmentQueueItem(incident_id=item.id, incident_type_id=item.category, incident_type=self._category_name(item.category), priority=self._priority_name(item.priority_score), created_at=self._aware(item.created_at), waiting_too_long=self._waiting_too_long(item)) for item in queue[:10]]
         return ZoneOverviewResponse(
             data=ZoneOverviewData(
                 zone=ZoneOverviewZone(id=zone.id, name=zone.name, city_id=zone.city_id, pressure_level=pressure.pressure_level),
                 summary=DashboardSummary(open_incidents=len(open_incidents), in_progress_incidents=len(in_progress), resolved_incidents=len(resolved), waiting_too_long_incidents=len(waiting)),
                 incident_types=incident_types,
                 incident_trends=[self._trend(day, incidents) for day in self._dates(start, end)],
-                assignment_queue=AssignmentQueue(total_count=len(queue), items=queue_items),
-                response_health=ResponseHealth(available_teams=int(pressure.available_teams), deployed_teams=int(pressure.deployed_teams), total_teams=int(pressure.total_teams), pressure_level=pressure.pressure_level),
             ),
             meta=ZoneOverviewMeta(period=selected_period, from_date=start, to_date=end, timezone=self.tz_name, data_as_of=datetime.now(timezone.utc)),
         )
@@ -108,22 +101,12 @@ class AdminDashboardService:
         return today - timedelta(days=days - 1), today, period or "15d"
 
     def _zone_pressure(self, zone: Zone, incidents: list[Incident]) -> ZonePressure:
-        resources = list(self.db.scalars(select(ZoneResource).where(ZoneResource.zone_id == zone.id)))
-        total = sum(float(item.initial_capacity) for item in resources)
-        available = sum(float(item.available_capacity) for item in resources)
-        deployed = max(total - available, 0)
-        demand = sum(1 for item in incidents if item.zone_id == zone.id and item.status in {"OPEN", "IN_PROGRESS"})
-        ratio = demand / total if total else 0
-        thresholds = self.settings
-        if total == 0 and demand > 0:
+        open_count = sum(1 for item in incidents if item.zone_id == zone.id and item.status in {"OPEN", "IN_PROGRESS"})
+        if open_count >= 50:
             level = "overloaded"
-        elif total == 0:
-            level = "balanced"
-        elif ratio >= thresholds.admin_dashboard_pressure_overloaded_ratio:
-            level = "overloaded"
-        elif ratio >= thresholds.admin_dashboard_pressure_under_pressure_ratio:
+        elif open_count >= 25:
             level = "under_pressure"
-        elif ratio <= thresholds.admin_dashboard_pressure_spare_ratio:
+        elif open_count <= 5:
             level = "spare_capacity"
         else:
             level = "balanced"
@@ -133,7 +116,13 @@ class AdminDashboardService:
                 boundary = PolygonGeometry.model_validate(zone.boundary)
             except ValueError:
                 boundary = None
-        return ZonePressure(zone_id=zone.id, zone_name=zone.name, open_incidents=sum(1 for item in incidents if item.zone_id == zone.id and item.status == "OPEN"), available_teams=available, deployed_teams=deployed, total_teams=total, pressure_level=level, boundary=boundary)
+        return ZonePressure(
+            zone_id=zone.id,
+            zone_name=zone.name,
+            open_incidents=sum(1 for item in incidents if item.zone_id == zone.id and item.status == "OPEN"),
+            pressure_level=level,
+            boundary=boundary,
+        )
 
     def _waiting_too_long(self, incident: Incident) -> bool:
         created = self._aware(incident.created_at)

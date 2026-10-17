@@ -28,9 +28,6 @@ class ZonePressure(BaseModel):
     zone_id: str
     zone_name: str
     open_incidents: int = Field(ge=0)
-    available_teams: float = Field(ge=0)
-    deployed_teams: float = Field(ge=0)
-    total_teams: float = Field(ge=0)
     pressure_level: Literal["overloaded", "under_pressure", "balanced", "spare_capacity"]
     boundary: PolygonGeometry | None
 
@@ -72,34 +69,11 @@ class IncidentTypeSummary(BaseModel):
     incident_count: int = Field(ge=0)
 
 
-class AssignmentQueueItem(BaseModel):
-    incident_id: str
-    incident_type_id: str
-    incident_type: str
-    priority: str | None
-    created_at: datetime
-    waiting_too_long: bool
-
-
-class AssignmentQueue(BaseModel):
-    total_count: int = Field(ge=0)
-    items: list[AssignmentQueueItem]
-
-
-class ResponseHealth(BaseModel):
-    available_teams: int = Field(ge=0)
-    deployed_teams: int = Field(ge=0)
-    total_teams: int = Field(ge=0)
-    pressure_level: Literal["overloaded", "under_pressure", "balanced", "spare_capacity"]
-
-
 class ZoneOverviewData(BaseModel):
     zone: ZoneOverviewZone
     summary: DashboardSummary
     incident_types: list[IncidentTypeSummary]
     incident_trends: list[IncidentTrend]
-    assignment_queue: AssignmentQueue
-    response_health: ResponseHealth
 
 
 class ZoneOverviewMeta(BaseModel):

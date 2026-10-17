@@ -36,7 +36,7 @@ export type IncidentList = { items: Incident[]; total: number };
 
 export type CityOverview = {
   summary: { open_incidents: number; in_progress_incidents: number; resolved_incidents: number; waiting_too_long_incidents: number };
-  zone_pressure: { zone_id: string; zone_name: string; open_incidents: number; available_teams: number; deployed_teams: number; total_teams: number; pressure_level: string; boundary: Record<string, unknown> | null }[];
+  zone_pressure: { zone_id: string; zone_name: string; open_incidents: number; pressure_level: string; boundary: Record<string, unknown> | null }[];
   incident_trends: { date: string; reported: number; resolved: number }[];
   period: string | null;
   from_date: string;
